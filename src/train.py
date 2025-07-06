@@ -56,8 +56,7 @@ def main(config_path: str):
     print("Starting training...")
     trainer.train(
         num_epochs=config['training']['num_epochs'],
-        resume_from_checkpoint=config['path'].get('resume_from_checkpoint'),
-        repo_id=config['hf']['repo_id']
+        resume_from_checkpoint=config['path'].get('resume_from_checkpoint')
     )
     print("Training finished!")
 

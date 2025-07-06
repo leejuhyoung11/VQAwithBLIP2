@@ -46,7 +46,7 @@ class CustomTrainer:
 
         return loss
 
-    def train(self, num_epochs: int, resume_from_checkpoint: str = None, repo_id=None):
+    def train(self, num_epochs: int, resume_from_checkpoint: str = None):
         total_steps = len(self.train_dataloader) * num_epochs
         warmup_steps = int(0.1 * total_steps)
         
@@ -57,7 +57,10 @@ class CustomTrainer:
         )
 
         if resume_from_checkpoint:
-            start_epoch = self.load_checkpoint(resume_from_checkpoint, repo_id)
+            if self.repo_id:
+                start_epoch = self.load_checkpoint(resume_from_checkpoint, self.repo_id)        
+            else:
+                start_epoch = self.load_checkpoint(resume_from_checkpoint)
         else:
             start_epoch = 0
 
@@ -180,6 +183,9 @@ class CustomTrainer:
             )
         
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
+
+        if not checkpoint['model_state_dict']:
+            print(f"Warning : No model checkpoint ")
         
         self.model.load_state_dict(checkpoint['model_state_dict'], strict=False)
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
