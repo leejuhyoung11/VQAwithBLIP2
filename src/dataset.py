@@ -5,12 +5,30 @@ import torchvision.transforms as transforms
 
 
 class ImageCaptioningDataset(Dataset):
-    def __init__(self, hf_dataset, image_processor, tokenizer, num_query_tokens=32, max_length=128):
+    def __init__(self, hf_dataset, image_processor, tokenizer, num_query_tokens=32, max_length=128, is_train=True):
         self.dataset = hf_dataset
         self.image_processor = image_processor
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.num_query_tokens = num_query_tokens
+
+        if self.is_train:
+            self.transforms = transforms.Compose([
+                transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
+                transforms.RandomRotation(degrees=15), # -15도에서 +15도 사이로 랜덤하게 회전
+                transforms.RandomHorizontalFlip(p=0.4),
+                transforms.RandomVerticalFlip(p=0.4),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                transforms.ToTensor(), 
+                transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711]) # 정규화
+            ])
+
+        else: 
+            self.transforms = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])
+            ])
         
 
     def __len__(self):
@@ -22,7 +40,8 @@ class ImageCaptioningDataset(Dataset):
         captions = item['answer']
         caption = captions[torch.randint(0, len(captions), (1,)).item()].replace('\n', ' ').strip()
 
-        pixel_values = self.image_processor(image, return_tensors="pt").pixel_values
+        pixel_values = self.transforms(image)
+        # pixel_values = self.image_processor(image, return_tensors="pt").pixel_values
 
         inputs = self.tokenizer(
             caption,

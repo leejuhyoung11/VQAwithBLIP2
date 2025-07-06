@@ -97,7 +97,6 @@ def main(config_path: str):
 
     train_dataset = ImageCaptioningDataset(
         train_raw_dataset, 
-        image_dir=config['data']['image_dir'],
         image_processor=image_processor, 
         tokenizer=tokenizer,
         max_length=config['training']['tokenizer_max_length'],
