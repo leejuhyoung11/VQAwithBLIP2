@@ -176,6 +176,8 @@ class CustomTrainer:
     def load_checkpoint(self, checkpoint_path: str, repo_id=None):
 
         if repo_id:
+            print(f"Load checkpoint from HugginFace...")
+            print(f"{repo_id}, {checkpoint_path}")
             checkpoint_path = hf_hub_download(
             repo_id=repo_id,
             filename=checkpoint_path,  
