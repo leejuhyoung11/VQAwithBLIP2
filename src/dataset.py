@@ -71,7 +71,9 @@ class ImageCaptioningDataset(Dataset):
 
 
 def get_datasets(dataset_name, config, image_processor, tokenizer):
-    raw_dataset = load_dataset(dataset_name)['val']
+    raw_datasets = load_dataset(dataset_name)
+    # Use only first dict
+    raw_dataset = list(raw_datasets.values())[0]
 
     split_dataset = raw_dataset.train_test_split(test_size=0.2)
     train_raw_dataset = split_dataset['train']

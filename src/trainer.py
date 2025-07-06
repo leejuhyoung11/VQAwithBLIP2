@@ -46,7 +46,7 @@ class CustomTrainer:
 
         return loss
 
-    def train(self, num_epochs: int, resume_from_checkpoint: str = None):
+    def train(self, num_epochs: int, resume_from_checkpoint: str = None, repo_id=None):
         total_steps = len(self.train_dataloader) * num_epochs
         warmup_steps = int(0.1 * total_steps)
         
@@ -57,7 +57,7 @@ class CustomTrainer:
         )
 
         if resume_from_checkpoint:
-            start_epoch = self.load_checkpoint(resume_from_checkpoint)
+            start_epoch = self.load_checkpoint(resume_from_checkpoint, repo_id)
         else:
             start_epoch = 0
 
@@ -92,7 +92,7 @@ class CustomTrainer:
         self.model.eval()
         total_loss = 0
         
-        last_n_samples = 1
+        last_n_samples = 2
         last_preds = deque(maxlen=last_n_samples)
         last_labels = deque(maxlen=last_n_samples)
 
@@ -158,7 +158,10 @@ class CustomTrainer:
         checkpoint_path = save_path / checkpoint_filename
 
         torch.save(checkpoint, checkpoint_path)
-        print(f"✅ Checkpoint saved to {checkpoint_path}, num of params {len(trainable_state_dict)}")
+        if trainable_state_dict:
+            print(f"Checkpoint saved to {checkpoint_path}, num of params {len(trainable_state_dict)}")
+        else:
+            print(f"No trainable_state_dict is saved, It is empty")
 
         if self.repo_id:
             self.upload_checkpoint_to_hf(
