@@ -117,7 +117,7 @@ class CustomTrainer:
 
         return avg_val_loss
     
-    def upload_checkpoint_to_hf(checkpoint_path, repo_id: str, remote_subdir: str = ""):
+    def upload_checkpoint_to_hf(self, checkpoint_path, repo_id: str, remote_subdir: str = ""):
         token = os.environ.get("HF_TOKEN")
         if token is None:
             raise EnvironmentError("Hugging Face token not found in env variable 'HF_TOKEN'")
@@ -164,7 +164,7 @@ class CustomTrainer:
             self.upload_checkpoint_to_hf(
                 checkpoint_path=checkpoint_path,
                 repo_id=self.repo_id,
-                remote_subdir=save_path.name  # 예: "epoch_1"
+                remote_subdir=save_path.name 
             )
 
     def load_checkpoint(self, checkpoint_path: str):

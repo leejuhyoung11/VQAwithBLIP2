@@ -127,8 +127,8 @@ def main(config_path: str):
         model=model,
         optimizer=optimizer,
         tokenizer=tokenizer,
-        train_dataset=train_dataset,
-        val_dataset=valid_dataset,
+        train_dataset=train_debug,
+        val_dataset=valid_debug,
         batch_size=config['training']['batch_size'],
         save_dir=config['path']['save_dir'],
         repo_id=config['hf']['repo_id']
