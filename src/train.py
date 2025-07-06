@@ -87,7 +87,7 @@ def main(config_path: str):
     model, image_processor, tokenizer = setup_model(config)
     trainable_params = select_train_params(model, language_model=False)
 
-    print(f"training {len(trainable_params)} params... Preparing dataset...")
+    print(f"training {trainable_params} params... Preparing dataset...")
 
     raw_dataset = load_dataset(config['dataset']['image_captioning'])['val']
 
