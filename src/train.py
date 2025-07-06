@@ -12,47 +12,9 @@ from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader, Subset
 
 # From src dir
-from model import BLIP2ForPhi
-from dataset import ImageCaptioningDataset
+from model import BLIP2ForPhi, setup_model
+from dataset import ImageCaptioningDataset, get_datasets
 from trainer import CustomTrainer
-
-def setup_model(config: dict, with_lora=True):
-    print("Loading model components...")
-
-    quantization_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-    )
-
-    vision_model_name = config['model']['vision_model_name']
-    llm_name = config['model']['llm_name']
-
-    image_processor = BlipImageProcessor.from_pretrained(vision_model_name)
-    tokenizer = AutoTokenizer.from_pretrained(llm_name, trust_remote_code=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    blip2_model = Blip2Model.from_pretrained(vision_model_name)
-    vision_model = blip2_model.vision_model
-    q_former = blip2_model.qformer
-    query_tokens = blip2_model.query_tokens
-
-    phi_model = AutoModelForCausalLM.from_pretrained(
-        llm_name,
-        quantization_config=quantization_config,
-        trust_remote_code=True,
-    )
-
-    if 'lora' in config['model'] and with_lora:
-        print("Applying LoRA configuration...")
-        lora_config = LoraConfig(**config['model']['lora'])
-        phi_model = get_peft_model(phi_model, lora_config)
-        phi_model.print_trainable_parameters()
-    
-    model = BLIP2ForPhi(vision_model, q_former, phi_model, query_tokens)
-    
-    return model, image_processor, tokenizer
 
 def select_train_params(model, qformer=True, projection=True, language_model=True):
     for param in model.vision_model.parameters():
@@ -89,31 +51,8 @@ def main(config_path: str):
 
     print(f"training {trainable_params} params... Preparing dataset...")
 
-    raw_dataset = load_dataset(config['dataset']['image_captioning'])['val']
+    train_dataset, valid_dataset, train_debug, valid_debug = get_datasets(config['dataset']['image_captioning'], config, image_processor, tokenizer)
 
-    split_dataset = raw_dataset.train_test_split(test_size=0.2)
-    train_raw_dataset = split_dataset['train']
-    eval_raw_dataset = split_dataset['test']
-
-    train_dataset = ImageCaptioningDataset(
-        train_raw_dataset, 
-        image_processor=image_processor, 
-        tokenizer=tokenizer,
-        max_length=config['training']['tokenizer_max_length'],
-        is_train=True
-    )
-    valid_dataset = ImageCaptioningDataset(
-        eval_raw_dataset,
-        image_processor=image_processor,
-        tokenizer=tokenizer,
-        max_length=config['training']['tokenizer_max_length'],
-        is_train=False
-    )
-
-    train_dataset = ImageCaptioningDataset(train_raw_dataset, image_processor, tokenizer)
-    valid_dataset = ImageCaptioningDataset(eval_raw_dataset, image_processor, tokenizer)
-    train_debug = Subset(train_dataset, indices=range(50))
-    valid_debug = Subset(valid_dataset, indices=range(50))
 
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = torch.optim.AdamW(

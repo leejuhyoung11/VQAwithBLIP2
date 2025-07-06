@@ -2,6 +2,8 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
+from datasets import load_dataset
+from torch.utils.data import Dataset, DataLoader, Subset
 
 
 class ImageCaptioningDataset(Dataset):
@@ -65,3 +67,34 @@ class ImageCaptioningDataset(Dataset):
             "attention_mask": inputs.attention_mask.squeeze(),
             "labels": combined_labels.squeeze()
         }
+    
+
+
+def get_datasets(dataset_name, config, image_processor, tokenizer):
+    raw_dataset = load_dataset(dataset_name)['val']
+
+    split_dataset = raw_dataset.train_test_split(test_size=0.2)
+    train_raw_dataset = split_dataset['train']
+    eval_raw_dataset = split_dataset['test']
+
+    train_dataset = ImageCaptioningDataset(
+        train_raw_dataset, 
+        image_processor=image_processor, 
+        tokenizer=tokenizer,
+        max_length=config['training']['tokenizer_max_length'],
+        is_train=True
+    )
+    valid_dataset = ImageCaptioningDataset(
+        eval_raw_dataset,
+        image_processor=image_processor,
+        tokenizer=tokenizer,
+        max_length=config['training']['tokenizer_max_length'],
+        is_train=False
+    )
+
+    train_dataset = ImageCaptioningDataset(train_raw_dataset, image_processor, tokenizer)
+    valid_dataset = ImageCaptioningDataset(eval_raw_dataset, image_processor, tokenizer)
+    train_debug = Subset(train_dataset, indices=range(50))
+    valid_debug = Subset(valid_dataset, indices=range(50))
+
+    return train_dataset, valid_dataset, train_debug, valid_debug

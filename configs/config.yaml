@@ -8,7 +8,7 @@ path:
 
 # -- Datasets --
 dataset:
-  image_captioning: "lmms-lab/COCO-Caption"
+  image_captioning: "lmms-lab/COCO-Caption" # Only use 'val'
 
 # -- Model Configuration --
 model:

@@ -2,6 +2,10 @@ import torch
 from torch import nn, optim
 from peft import PeftModel, LoraConfig, get_peft_model
 
+from transformers import (
+    AutoModelForCausalLM, Blip2Model, BlipImageProcessor, AutoTokenizer, BitsAndBytesConfig
+)
+
 class BLIP2ForPhi(nn.Module):
     def __init__(self, vision_model, q_former, language_model, query_tokens):
         super().__init__()
@@ -19,19 +23,6 @@ class BLIP2ForPhi(nn.Module):
             bias="none", 
             task_type="CAUSAL_LM",
         )
-        
-
-        # print("Freezing vision_model and phi_model parameters...")
-        # for param in self.vision_model.parameters():
-        #     param.requires_grad = False
-        # for param in self.phi_model.parameters():
-        #     param.requires_grad = False
-        
-        # print("Training q_former and projection layer...")
-        # for param in self.q_former.parameters():
-        #     param.requires_grad = True
-        # for param in self.projection.parameters():
-        #     param.requires_grad = True
 
     
     def forward(self, pixel_values, input_ids, attention_mask, labels=None):
@@ -89,3 +80,38 @@ class BLIP2ForPhi(nn.Module):
             **generate_kwargs
         )
         return outputs
+    
+
+
+def setup_model(config, with_lora=True):
+    vision_model_name = config['model']['vision_model_name']
+    llm_name = config['model']['llm_name']
+
+    quantization_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.float16,
+    )
+
+    image_processor = BlipImageProcessor.from_pretrained(vision_model_name)
+    tokenizer = AutoTokenizer.from_pretrained(llm_name, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    blip2_model = Blip2Model.from_pretrained(vision_model_name)
+    vision_model = blip2_model.vision_model
+    q_former = blip2_model.qformer
+    query_tokens = blip2_model.query_tokens
+
+    phi_model = AutoModelForCausalLM.from_pretrained(
+        llm_name, quantization_config=quantization_config, trust_remote_code=True
+    )
+
+    if 'lora' in config['model'] and with_lora:
+        lora_config = LoraConfig(**config['model']['lora'])
+        phi_model = get_peft_model(phi_model, lora_config)
+        phi_model.print_trainable_parameters()
+
+    model = BLIP2ForPhi(vision_model, q_former, phi_model, query_tokens)
+    
+    return model, image_processor, tokenizer
