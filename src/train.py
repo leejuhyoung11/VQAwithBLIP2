@@ -118,7 +118,7 @@ def main(config_path: str):
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = torch.optim.AdamW(
         trainable_params, 
-        lr=config['training']['learning_rate'], 
+        lr=float(config['training']['learning_rate']), 
         weight_decay=config['training']['weight_decay']
     )
 
@@ -130,7 +130,8 @@ def main(config_path: str):
         train_dataset=train_dataset,
         val_dataset=valid_dataset,
         batch_size=config['training']['batch_size'],
-        save_dir=config['path']['save_dir']
+        save_dir=config['path']['save_dir'],
+        repo_id=config['hf']['repo_id']
     )
 
     # 6. Start Training

@@ -6,10 +6,11 @@ from transformers import get_cosine_schedule_with_warmup
 import os
 from pathlib import Path
 from collections import deque
+from huggingface_hub import upload_file
 
 class CustomTrainer:
     
-    def __init__(self, model: nn.Module, optimizer, tokenizer, train_dataset, val_dataset=None, batch_size=8, save_dir="./checkpoints"):
+    def __init__(self, model: nn.Module, optimizer, tokenizer, train_dataset, val_dataset=None, batch_size=8, save_dir="./checkpoints", repo_id=None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
         self.optimizer = optimizer
@@ -24,6 +25,8 @@ class CustomTrainer:
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
         print(f"Using device: {self.device}")
+
+        self.repo_id = repo_id
 
     def _forward_step(self, batch: dict, return_preds: bool = False):
         inputs = {k: v.to(self.device) for k, v in batch.items()}
@@ -81,8 +84,8 @@ class CustomTrainer:
 
             if self.val_dataloader:
                 avg_val_loss = self.evaluate(epoch)
-            if epoch == num_epochs - 1:
-                self.save_checkpoint(epoch, avg_train_loss, avg_val_loss)
+            
+            self.save_checkpoint(epoch, avg_train_loss, avg_val_loss)
 
     def evaluate(self, epoch: int):
         
@@ -113,6 +116,26 @@ class CustomTrainer:
         print("---------------------------------------\n")
 
         return avg_val_loss
+    
+    def upload_checkpoint_to_hf(checkpoint_path, repo_id: str, remote_subdir: str = ""):
+        token = os.environ.get("HF_TOKEN")
+        if token is None:
+            raise EnvironmentError("Hugging Face token not found in env variable 'HF_TOKEN'")
+
+        remote_path = f"{remote_subdir}/{checkpoint_path.name}" if remote_subdir else checkpoint_path.name
+
+        try:
+            upload_file(
+                path_or_fileobj=str(checkpoint_path),
+                path_in_repo=remote_path,
+                repo_id=repo_id,
+                repo_type="model",
+                token=token
+            )
+            print(f"Uploaded to Hugging Face: {repo_id}/{remote_path}")
+        except Exception as e:
+            print(f"Upload failed: {e}")
+
 
     def save_checkpoint(self, epoch: int, train_loss: float, val_loss: float):
         save_path = self.save_dir / f"epoch_{epoch+1}"
@@ -130,8 +153,19 @@ class CustomTrainer:
             "train_loss": train_loss,
             "val_loss": val_loss,
         }
-        torch.save(checkpoint, save_path / f"checkpoint_epoch_{epoch+1}.pt")
-        print(f"✅ Checkpoint saved to {save_path}, num of params {len(trainable_state_dict)}")
+
+        checkpoint_filename = f"checkpoint_epoch{epoch+1}.pt"
+        checkpoint_path = save_path / checkpoint_filename
+
+        torch.save(checkpoint, checkpoint_path)
+        print(f"✅ Checkpoint saved to {checkpoint_path}, num of params {len(trainable_state_dict)}")
+
+        if self.repo_id:
+            self.upload_checkpoint_to_hf(
+                checkpoint_path=checkpoint_path,
+                repo_id=self.repo_id,
+                remote_subdir=save_path.name  # 예: "epoch_1"
+            )
 
     def load_checkpoint(self, checkpoint_path: str):
         
@@ -145,3 +179,5 @@ class CustomTrainer:
         start_epoch = checkpoint['epoch']
         print(f"✅ Checkpoint loaded. Resuming from epoch {start_epoch}")
         return start_epoch
+    
+    
