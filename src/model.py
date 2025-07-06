@@ -1,0 +1,91 @@
+import torch
+from torch import nn, optim
+from peft import PeftModel, LoraConfig, get_peft_model
+
+class BLIP2ForPhi(nn.Module):
+    def __init__(self, vision_model, q_former, language_model, query_tokens):
+        super().__init__()
+        self.vision_model = vision_model
+        self.q_former = q_former
+        self.projection = nn.Linear(q_former.config.hidden_size, language_model.config.hidden_size)
+        self.phi_model = language_model
+        self.query_tokens = query_tokens
+
+        lora_config = LoraConfig(
+            r=16, 
+            lora_alpha=32,
+            target_modules=["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2"],
+            lora_dropout=0.05,
+            bias="none", 
+            task_type="CAUSAL_LM",
+        )
+        
+
+        # print("Freezing vision_model and phi_model parameters...")
+        # for param in self.vision_model.parameters():
+        #     param.requires_grad = False
+        # for param in self.phi_model.parameters():
+        #     param.requires_grad = False
+        
+        # print("Training q_former and projection layer...")
+        # for param in self.q_former.parameters():
+        #     param.requires_grad = True
+        # for param in self.projection.parameters():
+        #     param.requires_grad = True
+
+    
+    def forward(self, pixel_values, input_ids, attention_mask, labels=None):
+        image_embeds = self.vision_model(pixel_values).last_hidden_state
+
+        batch_size = image_embeds.shape[0]
+        qformer_query_embeds = self.query_tokens.expand(batch_size, -1, -1)
+
+        
+        image_attention_mask = torch.ones(image_embeds.size()[:-1], dtype=torch.long, device=image_embeds.device)
+        query_outputs = self.q_former(
+            query_embeds=qformer_query_embeds,
+            encoder_hidden_states=image_embeds,
+            encoder_attention_mask=image_attention_mask
+        )[0]
+
+        projected_query = self.projection(query_outputs)
+
+        text_embeds = self.phi_model.get_input_embeddings()(input_ids)
+        inputs_embeds = torch.cat([projected_query, text_embeds], dim=1)
+        
+        query_attention_mask = torch.ones(projected_query.size()[:-1], dtype=torch.long, device=projected_query.device)
+        combined_attention_mask = torch.cat([query_attention_mask, attention_mask], dim=1)
+
+        
+        outputs = self.phi_model(
+            inputs_embeds=inputs_embeds,
+            attention_mask=combined_attention_mask,
+            labels=labels, 
+        )
+        return outputs
+    
+
+    def generate(self, pixel_values, input_ids, attention_mask, **generate_kwargs):
+        image_embeds = self.vision_model(pixel_values).last_hidden_state
+        batch_size = image_embeds.shape[0]
+        qformer_query_embeds = self.query_tokens.expand(batch_size, -1, -1)
+        image_attention_mask = torch.ones(image_embeds.size()[:-1], dtype=torch.long, device=image_embeds.device)
+
+        query_outputs = self.q_former(
+            query_embeds=qformer_query_embeds,
+            encoder_hidden_states=image_embeds,
+            encoder_attention_mask=image_attention_mask
+        )[0]
+
+        projected_query = self.projection(query_outputs) # shape: [B, 32, D_phi]
+        text_embeds = self.phi_model.get_input_embeddings()(input_ids) # shape: [B, S, D_phi]
+        inputs_embeds = torch.cat([projected_query, text_embeds], dim=1)
+        query_attention_mask = torch.ones(projected_query.size()[:-1], dtype=torch.long, device=projected_query.device)
+        combined_attention_mask = torch.cat([query_attention_mask, attention_mask], dim=1)
+
+        outputs = self.phi_model.generate(
+            inputs_embeds=inputs_embeds,
+            attention_mask=combined_attention_mask,
+            **generate_kwargs
+        )
+        return outputs

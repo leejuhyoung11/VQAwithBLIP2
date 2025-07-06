@@ -1,0 +1,33 @@
+# -- Directories --
+path:
+  train_csv_path: "/path/to/train.csv"
+  eval_csv_path: "/path/to/eval.csv"
+  image_dir: None
+  save_dir: "../outpus/checkpoints"
+  resume_from_checkpoint: null # Or "/path/to/checkpoint.pt"
+
+# -- Datasets --
+dataset:
+  image_captioning: "lmms-lab/COCO-Caption"
+
+# -- Model Configuration --
+model:
+  vision_model_name: "Salesforce/blip2-opt-2.7b"
+  llm_name: "microsoft/phi-1_5"
+  num_query_tokens: 32
+  lora:
+    r: 16
+    lora_alpha: 32
+    lora_dropout: 0.05
+    target_modules: ["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2"]
+    bias: "none"
+    task_type: "CAUSAL_LM"
+
+# -- Training arguments --
+training:
+  num_epochs: 2
+  batch_size: 4
+  learning_rate: 1e-5
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  tokenizer_max_length: 128
