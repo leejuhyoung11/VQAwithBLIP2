@@ -11,11 +11,12 @@ class ImageCaptioningDataset(Dataset):
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.num_query_tokens = num_query_tokens
+        self.is_train = is_train
 
         if self.is_train:
             self.transforms = transforms.Compose([
                 transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
-                transforms.RandomRotation(degrees=15), # -15도에서 +15도 사이로 랜덤하게 회전
+                transforms.RandomRotation(degrees=15), 
                 transforms.RandomHorizontalFlip(p=0.4),
                 transforms.RandomVerticalFlip(p=0.4),
                 transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
