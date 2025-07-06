@@ -6,11 +6,11 @@ from transformers import get_cosine_schedule_with_warmup
 import os
 from pathlib import Path
 from collections import deque
-from huggingface_hub import upload_file
+from huggingface_hub import upload_file, hf_hub_download
 
 class CustomTrainer:
     
-    def __init__(self, model: nn.Module, optimizer, tokenizer, train_dataset, val_dataset=None, batch_size=8, save_dir="./checkpoints", repo_id=None):
+    def __init__(self, model: nn.Module, optimizer, tokenizer, train_dataset, dataset_name, val_dataset=None, batch_size=8, save_dir="./checkpoints", repo_id=None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
         self.optimizer = optimizer
@@ -18,7 +18,7 @@ class CustomTrainer:
         
         self.train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
         self.val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, pin_memory=True) if val_dataset else None
-        
+        self.dataset_name = dataset_name
         self.scaler = torch.cuda.amp.GradScaler() 
         self.scheduler = None 
 
@@ -122,7 +122,7 @@ class CustomTrainer:
         if token is None:
             raise EnvironmentError("Hugging Face token not found in env variable 'HF_TOKEN'")
 
-        remote_path = f"{remote_subdir}/{checkpoint_path.name}" if remote_subdir else checkpoint_path.name
+        remote_path = f"{self.dataset_name}/{remote_subdir}/{checkpoint_path.name}" if remote_subdir else checkpoint_path.name
 
         try:
             upload_file(
@@ -167,7 +167,14 @@ class CustomTrainer:
                 remote_subdir=save_path.name 
             )
 
-    def load_checkpoint(self, checkpoint_path: str):
+    def load_checkpoint(self, checkpoint_path: str, repo_id=None):
+
+        if repo_id:
+            checkpoint_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=checkpoint_path,  
+            repo_type="model"
+            )
         
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
         

@@ -113,5 +113,30 @@ def setup_model(config, with_lora=True):
         phi_model.print_trainable_parameters()
 
     model = BLIP2ForPhi(vision_model, q_former, phi_model, query_tokens)
-    
+
     return model, image_processor, tokenizer
+
+
+def select_train_params(model, qformer=True, projection=True, language_model=True):
+    for param in model.vision_model.parameters():
+        param.requires_grad = False
+
+    if qformer:
+        for param in model.q_former.parameters():
+            param.requires_grad = True
+    else:
+        for param in model.q_former.parameters():
+            param.requires_grad = False
+    if projection:
+        for param in model.projection.parameters():
+            param.requires_grad = True
+    else:
+        for param in model.projection.parameters():
+            param.requires_grad = False
+
+    if not language_model:
+        for param in model.phi_model.parameters():
+            param.requires_grad = False
+
+    trainable_param_names = {name for name, param in model.named_parameters() if param.requires_grad}
+    return len(trainable_param_names)

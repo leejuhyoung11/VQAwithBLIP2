@@ -4,7 +4,7 @@ path:
   eval_csv_path: "/path/to/eval.csv"
   image_dir: None
   save_dir: "../outpus/checkpoints"
-  resume_from_checkpoint: null # Or "/path/to/checkpoint.pt"
+  resume_from_checkpoint: 'epoch_2/checkpoint_epoch2.pt' # Or "/path/to/checkpoint.pt"
 
 # -- Datasets --
 dataset:
@@ -25,7 +25,7 @@ model:
 
 # -- Training arguments --
 training:
-  num_epochs: 2
+  num_epochs: 4
   batch_size: 4
   learning_rate: 1e-5
   weight_decay: 0.01

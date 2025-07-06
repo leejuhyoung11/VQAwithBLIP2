@@ -12,34 +12,13 @@ from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader, Subset
 
 # From src dir
-from model import BLIP2ForPhi, setup_model
+from model import BLIP2ForPhi, setup_model, select_train_params
 from dataset import ImageCaptioningDataset, get_datasets
 from trainer import CustomTrainer
 
-def select_train_params(model, qformer=True, projection=True, language_model=True):
-    for param in model.vision_model.parameters():
-        param.requires_grad = False
-
-    if qformer:
-        for param in model.q_former.parameters():
-            param.requires_grad = True
-    else:
-        for param in model.q_former.parameters():
-            param.requires_grad = False
-    if projection:
-        for param in model.projection.parameters():
-            param.requires_grad = True
-    else:
-        for param in model.projection.parameters():
-            param.requires_grad = False
-
-    if not language_model:
-        for param in model.phi_model.parameters():
-            param.requires_grad = False
-
-    trainable_param_names = {name for name, param in model.named_parameters() if param.requires_grad}
-    return len(trainable_param_names)
-
+"""
+EXAMPLE FILE
+"""
 
 def main(config_path: str):
     
@@ -61,13 +40,13 @@ def main(config_path: str):
         weight_decay=config['training']['weight_decay']
     )
 
-    # 5. Trainer 
     trainer = CustomTrainer(
         model=model,
         optimizer=optimizer,
         tokenizer=tokenizer,
         train_dataset=train_debug,
         val_dataset=valid_debug,
+        dataset_name=config['dataset']['image_captioning'],
         batch_size=config['training']['batch_size'],
         save_dir=config['path']['save_dir'],
         repo_id=config['hf']['repo_id']
@@ -77,7 +56,8 @@ def main(config_path: str):
     print("Starting training...")
     trainer.train(
         num_epochs=config['training']['num_epochs'],
-        resume_from_checkpoint=config['path'].get('resume_from_checkpoint') 
+        resume_from_checkpoint=config['path'].get('resume_from_checkpoint'),
+        repo_id=config['hf']['repo_id']
     )
     print("Training finished!")
 
