@@ -49,7 +49,7 @@ class BLIP2ForPhi(nn.Module):
 
         
         outputs = self.phi_model(
-            inputs_embeds=inputs_embeds.to(torch.float32),
+            inputs_embeds=inputs_embeds,
             attention_mask=combined_attention_mask,
             labels=labels, 
         )
@@ -104,7 +104,7 @@ def setup_model(config, with_lora=True):
     query_tokens = blip2_model.query_tokens
 
     phi_model = AutoModelForCausalLM.from_pretrained(
-        llm_name, quantization_config=quantization_config, trust_remote_code=True
+        llm_name, quantization_config=quantization_config, trust_remote_code=True, torch_dtype=torch.float32
     )
 
     if 'lora' in config['model'] and with_lora:
