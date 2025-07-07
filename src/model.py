@@ -104,13 +104,18 @@ def setup_model(config, with_lora=True):
     query_tokens = blip2_model.query_tokens
 
     phi_model = AutoModelForCausalLM.from_pretrained(
-        llm_name, quantization_config=quantization_config, trust_remote_code=True, torch_dtype=torch.float32
+        llm_name, quantization_config=quantization_config, trust_remote_code=True
     )
 
     if 'lora' in config['model'] and with_lora:
         lora_config = LoraConfig(**config['model']['lora'])
         phi_model = get_peft_model(phi_model, lora_config)
         phi_model.print_trainable_parameters()
+
+    for name, module in phi_model.named_modules():
+        if 'layernorm' in name.lower() or isinstance(module, torch.nn.LayerNorm):
+            # LayerNorm 레이어를 float32로 변환
+            module.to(torch.float32)
 
     model = BLIP2ForPhi(vision_model, q_former, phi_model, query_tokens)
 
