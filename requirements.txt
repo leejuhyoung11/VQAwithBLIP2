@@ -13,6 +13,11 @@ torchvision @ https://download.pytorch.org/whl/cu124/torchvision-0.21.0%2Bcu124-
 tqdm==4.67.1
 transformers==4.51.3
 ipykernel==6.29.5
+tqdm>=4.64.0
+ipywidgets>=7.7.1
+ipython>=7.16.3
+jupyterlab>=3.0.0
+notebook>=6.4.12
 
 
 
