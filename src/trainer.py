@@ -57,6 +57,7 @@ class CustomTrainer:
         )
 
         if resume_from_checkpoint:
+            print(f"Resume from checkpoint {start_epoch}...")
             if self.repo_id:
                 start_epoch = self.load_checkpoint(resume_from_checkpoint, self.repo_id)        
             else:
