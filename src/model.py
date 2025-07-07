@@ -49,7 +49,7 @@ class BLIP2ForPhi(nn.Module):
 
         
         outputs = self.phi_model(
-            inputs_embeds=inputs_embeds,
+            inputs_embeds=inputs_embeds.to(torch.float32),
             attention_mask=combined_attention_mask,
             labels=labels, 
         )
