@@ -8,7 +8,9 @@ path:
 
 # -- Datasets --
 dataset:
-  image_captioning: "lmms-lab/COCO-Caption" # Only use 'val'
+  cocoCaption: "lmms-lab/COCO-Caption" # Only use 'val'
+  flickr: "lmms-lab/flickr30k"
+  llava: "lmms-lab/LLaVA-ReCap-558K"
 
 # -- Model Configuration --
 model:
@@ -26,11 +28,11 @@ model:
 # -- Training arguments --
 training:
   num_epochs: 10
-  batch_size: 16
+  batch_size: 4
   learning_rate: 1e-5
   weight_decay: 0.01
   warmup_ratio: 0.1
-  tokenizer_max_length: 128
+  tokenizer_max_length: 256
 
 hf:
   repo_id: 'DRPARKSTREET/BLIP2_PHI1.5'

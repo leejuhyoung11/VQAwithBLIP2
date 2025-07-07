@@ -113,7 +113,7 @@ def setup_model(config, with_lora=True):
         phi_model.print_trainable_parameters()
 
     for name, module in phi_model.named_modules():
-        if 'layernorm' in name.lower() or isinstance(module, torch.nn.LayerNorm):
+        if 'layernorm' in name.lower() or 'lm_head' in name.lower():
             # LayerNorm 레이어를 float32로 변환
             module.to(torch.float32)
 

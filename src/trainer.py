@@ -19,8 +19,8 @@ class CustomTrainer:
         self.optimizer = optimizer
         self.tokenizer = tokenizer
         
-        self.train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True)
-        self.val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=16, pin_memory=True) if val_dataset else None
+        self.train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True, collate_fn=custom_collate_fn)
+        self.val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=16, pin_memory=True, collate_fn=custom_collate_fn) if val_dataset else None
         self.dataset_name = dataset_name
 
         self.model, self.optimizer, self.train_dataloader, self.val_dataloader = self.accelerator.prepare(
@@ -206,4 +206,9 @@ class CustomTrainer:
         print(f"✅ Checkpoint loaded. Resuming from epoch {start_epoch}")
         return start_epoch
     
-    
+
+def custom_collate_fn(batch):
+    batch = [item for item in batch if item is not None]
+    if not batch:
+        return None
+    return torch.utils.data.dataloader.default_collate(batch)

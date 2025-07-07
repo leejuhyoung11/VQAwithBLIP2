@@ -37,36 +37,60 @@ class ImageCaptioningDataset(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        item = self.dataset[idx]
-        image = item['image'].convert("RGB")
-        captions = item['answer']
-        caption = captions[torch.randint(0, len(captions), (1,)).item()].replace('\n', ' ').strip()
+        try:
+            item = self.dataset[idx]
+            image = item['image'].convert("RGB")
+            
+            #1 cocoCaption
+            if 'answer' in item and item['answer']:
+                captions = item['answer']
+                caption = captions[torch.randint(0, len(captions), (1,)).item()].replace('\n', ' ').strip()
+            #2 flickr30k
+            elif 'caption' in item and item['caption']:
+                captions_list = item.get('caption')
+                if captions_list:
+                    valid_captions = [c.strip().replace('\n', ' ') for c in captions_list if c and c.strip()]
+                if valid_captions:
+                    caption = valid_captions[torch.randint(0, len(valid_captions), (1,)).item()]
+            #LLaVa-Recap
+            elif 'conversations' in item and item['conversations']:
+                for turn in item['conversations']:
+                    if turn.get('from') == 'gpt':
+                        caption = turn.get('value')
+                        break
+            
+            if caption is None or image is None:
+                print(f"No Element in {idx}")
+                return None
+            
+            
+            pixel_values = self.transforms(image)
+            
 
-        pixel_values = self.transforms(image)
-        # pixel_values = self.image_processor(image, return_tensors="pt").pixel_values
+            inputs = self.tokenizer(
+                caption,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_length,
+                return_tensors="pt"
+            )
+            
+            text_labels = inputs.input_ids.clone()
+            text_labels[text_labels == self.tokenizer.pad_token_id] = -100
+            
+            query_labels = torch.full((1, self.num_query_tokens), -100)
 
-        inputs = self.tokenizer(
-            caption,
-            padding="max_length",
-            truncation=True,
-            max_length=self.max_length,
-            return_tensors="pt"
-        )
-        
-        text_labels = inputs.input_ids.clone()
-        text_labels[text_labels == self.tokenizer.pad_token_id] = -100
-        
-        query_labels = torch.full((1, self.num_query_tokens), -100)
+            combined_labels = torch.cat([query_labels, text_labels], dim=1)
 
-        combined_labels = torch.cat([query_labels, text_labels], dim=1)
-
-        return {
-            "pixel_values": pixel_values.squeeze(),
-            "input_ids": inputs.input_ids.squeeze(),   
-            "attention_mask": inputs.attention_mask.squeeze(),
-            "labels": combined_labels.squeeze()
-        }
-    
+            return {
+                "pixel_values": pixel_values.squeeze(),
+                "input_ids": inputs.input_ids.squeeze(),   
+                "attention_mask": inputs.attention_mask.squeeze(),
+                "labels": combined_labels.squeeze()
+            }
+        except Exception as e:
+            print(f"Whil processing index {idx} , error occured ({e}), Skip Element.")
+            return None
 
 
 def get_datasets(dataset_name, config, image_processor, tokenizer):
