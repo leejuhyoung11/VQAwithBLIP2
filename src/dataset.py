@@ -18,7 +18,6 @@ class ImageCaptioningDataset(Dataset):
         if self.is_train:
             self.transforms = transforms.Compose([
                 transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
-                transforms.RandomRotation(degrees=15), 
                 transforms.RandomHorizontalFlip(p=0.4),
                 transforms.RandomVerticalFlip(p=0.4),
                 transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),

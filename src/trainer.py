@@ -1,25 +1,33 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from tqdm.auto import tqdm
+from tqdm.notebook import tqdm
 from transformers import get_cosine_schedule_with_warmup
 import os
 from pathlib import Path
 from collections import deque
 from huggingface_hub import upload_file, hf_hub_download
+from accelerate import Accelerator
 
 class CustomTrainer:
     
     def __init__(self, model: nn.Module, optimizer, tokenizer, train_dataset, dataset_name, val_dataset=None, batch_size=8, save_dir="./checkpoints", repo_id=None):
+        self.accelerator = Accelerator()
+        
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
         self.optimizer = optimizer
         self.tokenizer = tokenizer
         
-        self.train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
-        self.val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, pin_memory=True) if val_dataset else None
+        self.train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True)
+        self.val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=16, pin_memory=True) if val_dataset else None
         self.dataset_name = dataset_name
-        self.scaler = torch.cuda.amp.GradScaler() 
+
+        self.model, self.optimizer, self.train_dataloader, self.val_dataloader = self.accelerator.prepare(
+            self.model, self.optimizer, self.train_dataloader, self.val_dataloader
+        )
+
+        self.scaler = None 
         self.scheduler = None 
 
         self.save_dir = Path(save_dir)
@@ -31,7 +39,7 @@ class CustomTrainer:
     def _forward_step(self, batch: dict, return_preds: bool = False):
         inputs = {k: v.to(self.device) for k, v in batch.items()}
         
-        with torch.autocast(device_type='cuda', dtype=torch.float16):
+        with self.accelerator.autocast():
             outputs = self.model(**inputs)
             loss = outputs.loss
 
@@ -75,9 +83,8 @@ class CustomTrainer:
                 
                 loss = self._forward_step(batch)
                 
-                self.scaler.scale(loss).backward()
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+                self.accelerator.backward(loss)
+                self.optimizer.step()
                 self.scheduler.step()
                 
                 epoch_loss += loss.item()
