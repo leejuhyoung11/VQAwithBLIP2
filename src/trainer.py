@@ -11,7 +11,7 @@ from accelerate import Accelerator
 
 class CustomTrainer:
     
-    def __init__(self, model: nn.Module, optimizer, tokenizer, train_dataset, dataset_name, val_dataset=None, batch_size=8, save_dir="./checkpoints", repo_id=None):
+    def __init__(self, model: nn.Module, optimizer, tokenizer, train_dataset, dataset_name, val_dataset=None, batch_size=8, save_dir_root="./checkpoints", repo_id=None):
         self.accelerator = Accelerator()
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -30,7 +30,9 @@ class CustomTrainer:
         self.scaler = None 
         self.scheduler = None 
 
-        self.save_dir = Path(save_dir)
+        self.save_dir_root = Path(save_dir_root)
+        self.save_dir_root.mkdir(parents=True, exist_ok=True)
+        self.save_dir = Path(save_dir_root) / self.dataset_name
         self.save_dir.mkdir(parents=True, exist_ok=True)
         print(f"Using device: {self.device}")
 
@@ -54,7 +56,7 @@ class CustomTrainer:
 
         return loss
 
-    def train(self, num_epochs: int, resume_from_checkpoint: str = None):
+    def train(self, num_epochs: int, resume_from_checkpoint: str = None, new_stage: bool = None):
         total_steps = len(self.train_dataloader) * num_epochs
         warmup_steps = int(0.1 * total_steps)
         
@@ -65,13 +67,16 @@ class CustomTrainer:
         )
 
         if resume_from_checkpoint:
-            print(f"Resume from checkpoint {start_epoch}...")
             if self.repo_id:
                 start_epoch = self.load_checkpoint(resume_from_checkpoint, self.repo_id)        
             else:
                 start_epoch = self.load_checkpoint(resume_from_checkpoint)
+            print(f"Resume from checkpoint {start_epoch}...")
         else:
             start_epoch = 0
+
+        if new_stage:
+            start_epoch = 0 # load only weights start from epoch 0
 
         for epoch in range(start_epoch, num_epochs):
             self.model.train()
