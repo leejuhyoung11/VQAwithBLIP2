@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from transformers import get_cosine_schedule_with_warmup
 import os
 from pathlib import Path
