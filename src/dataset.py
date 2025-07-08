@@ -157,28 +157,36 @@ class VQADataset(Dataset):
             
             pixel_values = self.transforms(image)
 
+            prompt = (f"Question: {question}\n\n" +"Answer:")
+            len_of_prompt = len(tokenizer(prompt)['input_ids'])
+
             inputs = self.tokenizer(
-                question,
+                prompt,
                 padding="max_length",
                 truncation=True,
                 max_length=self.max_length,
                 return_tensors="pt"
             )
-
-            labels = self.tokenizer(
-                answer,
+            
+            answer_tokens = self.tokenizer(
+                (prompt+answer),
                 padding="max_length",
                 truncation=True,
                 max_length=self.max_length,
                 return_tensors="pt"
             ).input_ids
-            labels[labels == self.tokenizer.pad_token_id] = -100
+            answer_tokens[answer_tokens == self.tokenizer.pad_token_id] = -100
+
+            answer_tokens[0, :len_of_prompt] = -100
+            query_labels = torch.full((1, self.num_query_tokens), -100)
+            combined_labels = torch.cat([query_labels, answer_tokens], dim=1)
+
 
             return {
                 "pixel_values": pixel_values.squeeze(),
                 "input_ids": inputs.input_ids.squeeze(),   
                 "attention_mask": inputs.attention_mask.squeeze(),
-                "labels": labels.squeeze()
+                "labels": combined_labels.squeeze()
             }
         except Exception as e:
             print(f"Whil processing index {idx} , error occured ({e}), Skip Element.")
@@ -207,12 +215,15 @@ def get_captioning_datasets(dataset_name, image_processor, tokenizer, tokenizer_
 
 
 def get_vqa_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=128):
+    
+    id_to_image = None
     # images and quesitons are seperated
     if isinstance(dataset_name, list):
         image_dataset = load_dataset(dataset_name[0], dataset_name[1][0])
         image_dataset = list(image_dataset.values())[0]
         id_to_image = {item['id']: item['image'] for item in tqdm(image_dataset, desc="Building image dictionary")}
         raw_datasets = load_dataset(dataset_name[0], dataset_name[1][1])
+        raw_dataset = list(raw_datasets.values())[0]
         
     else:
         raw_datasets = load_dataset(dataset_name)

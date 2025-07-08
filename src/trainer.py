@@ -7,12 +7,12 @@ import os
 from pathlib import Path
 from collections import deque
 from huggingface_hub import upload_file, hf_hub_download
-from accelerate import Accelerator
+
 
 class CustomTrainer:
     
     def __init__(self, model: nn.Module, optimizer, tokenizer, train_dataset, dataset_name, val_dataset=None, batch_size=8, save_dir_root="./checkpoints", repo_id=None):
-        self.accelerator = Accelerator()
+        
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
@@ -23,11 +23,8 @@ class CustomTrainer:
         self.val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=16, pin_memory=True, collate_fn=custom_collate_fn) if val_dataset else None
         self.dataset_name = dataset_name
 
-        self.model, self.optimizer, self.train_dataloader, self.val_dataloader = self.accelerator.prepare(
-            self.model, self.optimizer, self.train_dataloader, self.val_dataloader
-        )
 
-        self.scaler = None 
+        self.scaler = torch.cuda.amp.GradScaler()
         self.scheduler = None 
 
         self.save_dir_root = Path(save_dir_root)
@@ -41,7 +38,7 @@ class CustomTrainer:
     def _forward_step(self, batch: dict, return_preds: bool = False):
         inputs = {k: v.to(self.device) for k, v in batch.items()}
         
-        with self.accelerator.autocast():
+        with torch.autocast(device_type='cuda', dtype=torch.float16):
             outputs = self.model(**inputs)
             loss = outputs.loss
 
@@ -88,8 +85,9 @@ class CustomTrainer:
                 
                 loss = self._forward_step(batch)
                 
-                self.accelerator.backward(loss)
-                self.optimizer.step()
+                self.scaler.scale(loss).backward()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
                 
                 epoch_loss += loss.item()

@@ -65,9 +65,9 @@ trainer = CustomTrainer(
         tokenizer=tokenizer,
         train_dataset=final_train_dataset,
         val_dataset=final_valid_dataset,
-        dataset_name='ImageCaptioning-stage3',
+        dataset_name='VQA-stage3',
         batch_size=config['training']['batch_size'],
-        save_dir=config['path']['save_dir'],
+        save_dir_root=config['path']['save_dir'],
         repo_id=config['hf']['repo_id']
     )
 
