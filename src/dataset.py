@@ -6,6 +6,7 @@ from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader, Subset
 from collections import Counter
 from tqdm import tqdm
+import random
 
 class ImageCaptioningDataset(Dataset):
     def __init__(self, hf_dataset, image_processor, tokenizer, num_query_tokens=32, max_length=128, is_train=True):
@@ -66,8 +67,7 @@ class ImageCaptioningDataset(Dataset):
             
             
             pixel_values = self.transforms(image)
-            
-            prompt = (f"Describe the image:")
+            prompt = get_captioning_prompt()
             len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
 
             inputs = self.tokenizer(
@@ -190,7 +190,22 @@ class VQADataset(Dataset):
             return None
 
 
+def get_captioning_prompt():
+    captioning = [
+    "A short image caption: \n Answer :",
+    "A short image description: \n Answer :",
+    "Write a short description for the image \n Answer :",
+    "Write a description for the photo \n Answer :",
+    "Provide a description of what is presented in the photo. \n Answer :",
+    "Briefly describe the content of the image. \n Answer :",
+    "Can you briefly explain what you see in the image? \n Answer :",
+    "Could you use a few words to describe what you perceive in the photo? \n Answer :",
+    "Please provide a short depiction of the picture. \n Answer :",
+    "Using language, provide a short account of the image. \n Answer :",
+    "Use a few words to illustrate what is happening in the picture. \n Answer :"
+    ]
 
+    return random.choice(captioning)
 
 
 def get_captioning_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=128):

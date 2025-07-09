@@ -20,7 +20,7 @@ dataset:
 # -- Model Configuration --
 model:
   vision_model_name: "Salesforce/blip2-opt-2.7b"
-  llm_name: "microsoft/phi-1_5"
+  llm_name: "google/flan-t5-xl"
   num_query_tokens: 32
   lora:
     r: 16
@@ -41,3 +41,18 @@ training:
 
 hf:
   repo_id: 'DRPARKSTREET/BLIP2_PHI1.5'
+
+prompt:
+  captioning: [
+    "A short image caption: \n Answer :",
+    "A short image description: \n Answer :",
+    "Write a short description for the image \n Answer :",
+    "Write a description for the photo \n Answer :",
+    "Provide a description of what is presented in the photo. \n Answer :",
+    "Briefly describe the content of the image. \n Answer :",
+    "Can you briefly explain what you see in the image? \n Answer :",
+    "Could you use a few words to describe what you perceive in the photo? \n Answer :",
+    "Please provide a short depiction of the picture. \n Answer :",
+    "Using language, provide a short account of the image. \n Answer :",
+    "Use a few words to illustrate what is happening in the picture. \n Answer :"
+  ]

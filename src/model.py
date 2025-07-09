@@ -3,7 +3,7 @@ from torch import nn, optim
 from peft import PeftModel, LoraConfig, get_peft_model
 
 from transformers import (
-    AutoModelForCausalLM, Blip2Model, BlipImageProcessor, AutoTokenizer, BitsAndBytesConfig
+    AutoModelForSeq2SeqLM, Blip2Model, BlipImageProcessor, AutoTokenizer, BitsAndBytesConfig
 )
 
 class BLIP2ForPhi(nn.Module):
@@ -103,7 +103,7 @@ def setup_model(config, with_lora=True):
     q_former = blip2_model.qformer
     query_tokens = blip2_model.query_tokens
 
-    phi_model = AutoModelForCausalLM.from_pretrained(
+    phi_model = AutoModelForSeq2SeqLM.from_pretrained(
         llm_name, quantization_config=quantization_config, trust_remote_code=True
     )
 
