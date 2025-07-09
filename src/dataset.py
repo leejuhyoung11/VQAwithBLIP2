@@ -158,7 +158,7 @@ class VQADataset(Dataset):
             pixel_values = self.transforms(image)
 
             prompt = (f"Question: {question}\n\n" +"Answer:")
-            len_of_prompt = len(tokenizer(prompt)['input_ids'])
+            len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
 
             inputs = self.tokenizer(
                 prompt,
