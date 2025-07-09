@@ -67,9 +67,11 @@ class ImageCaptioningDataset(Dataset):
             
             pixel_values = self.transforms(image)
             
+            prompt = (f"Describe the image:")
+            len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
 
             inputs = self.tokenizer(
-                caption,
+                prompt + caption,
                 padding="max_length",
                 truncation=True,
                 max_length=self.max_length,
@@ -77,6 +79,7 @@ class ImageCaptioningDataset(Dataset):
             )
             
             text_labels = inputs.input_ids.clone()
+            text_labels[0, :len_of_prompt] = -100
             text_labels[text_labels == self.tokenizer.pad_token_id] = -100
             
             query_labels = torch.full((1, self.num_query_tokens), -100)
