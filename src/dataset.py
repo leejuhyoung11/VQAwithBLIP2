@@ -157,27 +157,21 @@ class VQADataset(Dataset):
             
             pixel_values = self.transforms(image)
 
-            prompt = (f"Question: {question}\n\n" +"Answer:")
+            prompt = (f"Question: {question}\n" +"Answer:")
             len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
 
             inputs = self.tokenizer(
-                prompt,
+                prompt + answer,
                 padding="max_length",
                 truncation=True,
-                max_length=self.max_length,
+                max_length=32,
                 return_tensors="pt"
             )
             
-            answer_tokens = self.tokenizer(
-                (prompt+answer),
-                padding="max_length",
-                truncation=True,
-                max_length=self.max_length,
-                return_tensors="pt"
-            ).input_ids
+            answer_tokens = inputs.input_ids.clone()
+            answer_tokens[0, :len_of_prompt] = -100
             answer_tokens[answer_tokens == self.tokenizer.pad_token_id] = -100
 
-            answer_tokens[0, :len_of_prompt] = -100
             query_labels = torch.full((1, self.num_query_tokens), -100)
             combined_labels = torch.cat([query_labels, answer_tokens], dim=1)
 
@@ -191,7 +185,6 @@ class VQADataset(Dataset):
         except Exception as e:
             print(f"Whil processing index {idx} , error occured ({e}), Skip Element.")
             return None
-
 
 
 
