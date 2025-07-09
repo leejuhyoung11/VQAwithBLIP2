@@ -15,14 +15,14 @@ class BLIP2ForPhi(nn.Module):
         self.phi_model = language_model
         self.query_tokens = query_tokens
 
-        lora_config = LoraConfig(
-            r=16, 
-            lora_alpha=32,
-            target_modules=["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2"],
-            lora_dropout=0.05,
-            bias="none", 
-            task_type="CAUSAL_LM",
-        )
+        # lora_config = LoraConfig(
+        #     r=16, 
+        #     lora_alpha=32,
+        #     target_modules=["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2"],
+        #     lora_dropout=0.05,
+        #     bias="none", 
+        #     task_type="CAUSAL_LM",
+        # )
 
     
     def forward(self, pixel_values, input_ids, attention_mask, labels=None):
@@ -107,10 +107,10 @@ def setup_model(config, with_lora=True):
         llm_name, quantization_config=quantization_config, trust_remote_code=True
     )
 
-    if 'lora' in config['model'] and with_lora:
-        lora_config = LoraConfig(**config['model']['lora'])
-        phi_model = get_peft_model(phi_model, lora_config)
-        phi_model.print_trainable_parameters()
+    # if 'lora' in config['model'] and with_lora:
+    #     lora_config = LoraConfig(**config['model']['lora'])
+    #     phi_model = get_peft_model(phi_model, lora_config)
+    #     phi_model.print_trainable_parameters()
 
     # for name, module in phi_model.named_modules():
     #     if 'layernorm' in name.lower() or 'lm_head' in name.lower():
