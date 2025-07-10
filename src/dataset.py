@@ -46,14 +46,14 @@ class ImageCaptioningDataset(Dataset):
             #1 cocoCaption
             if 'answer' in item and item['answer']:
                 captions = item['answer']
-                caption = captions[torch.randint(0, len(captions), (1,)).item()].replace('\n', ' ').strip()
+                caption = captions[0].replace('\n', ' ').strip()
             #2 flickr30k
             elif 'caption' in item and item['caption']:
                 captions_list = item.get('caption')
                 if captions_list:
                     valid_captions = [c.strip().replace('\n', ' ') for c in captions_list if c and c.strip()]
                 if valid_captions:
-                    caption = valid_captions[torch.randint(0, len(valid_captions), (1,)).item()]
+                    caption = valid_captions[0]
             #LLaVa-Recap
             elif 'conversations' in item and item['conversations']:
                 for turn in item['conversations']:
@@ -67,7 +67,7 @@ class ImageCaptioningDataset(Dataset):
             
             
             pixel_values = self.transforms(image)
-            prompt = get_captioning_prompt()
+            prompt = "Describe the image.\nAnswer : "
             
             len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
 
