@@ -83,7 +83,7 @@ class BLIP2ForPhi(nn.Module):
     
 
 
-def setup_model(config, with_lora=True):
+def setup_model(config):
     vision_model_name = config['model']['vision_model_name']
     llm_name = config['model']['llm_name']
 

@@ -68,6 +68,7 @@ class ImageCaptioningDataset(Dataset):
             
             pixel_values = self.transforms(image)
             prompt = get_captioning_prompt()
+            print(prompt)
             len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
 
             inputs = self.tokenizer(
@@ -252,3 +253,4 @@ def get_vqa_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_len
     valid_debug = Subset(valid_dataset, indices=range(50))
 
     return train_dataset, valid_dataset, train_debug, valid_debug
+
