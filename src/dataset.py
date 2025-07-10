@@ -68,7 +68,7 @@ class ImageCaptioningDataset(Dataset):
             
             pixel_values = self.transforms(image)
             prompt = get_captioning_prompt()
-            print(prompt)
+            
             len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
 
             inputs = self.tokenizer(
