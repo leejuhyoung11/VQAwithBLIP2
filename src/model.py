@@ -3,7 +3,7 @@ from torch import nn, optim
 from peft import PeftModel, LoraConfig, get_peft_model
 
 from transformers import (
-    AutoModelForSeq2SeqLM, Blip2Model, BlipImageProcessor, AutoTokenizer, BitsAndBytesConfig
+    AutoModelForCausalLM, Blip2Model, BlipImageProcessor, AutoTokenizer, BitsAndBytesConfig
 )
 
 class BLIP2ForPhi(nn.Module):
@@ -15,14 +15,6 @@ class BLIP2ForPhi(nn.Module):
         self.phi_model = language_model
         self.query_tokens = query_tokens
 
-        # lora_config = LoraConfig(
-        #     r=16, 
-        #     lora_alpha=32,
-        #     target_modules=["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2"],
-        #     lora_dropout=0.05,
-        #     bias="none", 
-        #     task_type="CAUSAL_LM",
-        # )
 
     
     def forward(self, pixel_values, input_ids, attention_mask, labels=None):
@@ -103,19 +95,9 @@ def setup_model(config):
     q_former = blip2_model.qformer
     query_tokens = blip2_model.query_tokens
 
-    phi_model = AutoModelForSeq2SeqLM.from_pretrained(
+    phi_model = AutoModelForCausalLM.from_pretrained(
         llm_name, quantization_config=quantization_config, trust_remote_code=True
     )
-
-    # if 'lora' in config['model'] and with_lora:
-    #     lora_config = LoraConfig(**config['model']['lora'])
-    #     phi_model = get_peft_model(phi_model, lora_config)
-    #     phi_model.print_trainable_parameters()
-
-    # for name, module in phi_model.named_modules():
-    #     if 'layernorm' in name.lower() or 'lm_head' in name.lower():
-    #         # LayerNorm 레이어를 float32로 변환
-    #         module.to(torch.float32)
 
     model = BLIP2ForPhi(vision_model, q_former, phi_model, query_tokens)
 

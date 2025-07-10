@@ -193,8 +193,8 @@ class VQADataset(Dataset):
 
 def get_captioning_prompt():
     captioning = [
-    "A short image caption: \n Answer :",
-    "A short image description: \n Answer :",
+    "A short image caption : \n Answer :",
+    "A short image description : \n Answer :",
     "Write a short description for the image \n Answer :",
     "Write a description for the photo \n Answer :",
     "Provide a description of what is presented in the photo. \n Answer :",
