@@ -20,7 +20,7 @@ dataset:
 # -- Model Configuration --
 model:
   vision_model_name: "Salesforce/blip2-opt-2.7b"
-  llm_name: "google/flan-t5-xl"
+  llm_name:  "microsoft/phi-1_5"
   num_query_tokens: 32
   lora:
     r: 16
