@@ -44,11 +44,29 @@ class CustomTrainer:
 
         if return_preds:
             pred_ids = torch.argmax(outputs.logits, dim=-1)
-            decoded_preds = self.tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
-            
             labels = inputs['labels'].clone()
-            labels[labels == -100] = self.tokenizer.pad_token_id
-            decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+            decoded_preds = []
+            decoded_labels = []
+
+            for i in range(labels.size(0)):
+                mask = labels[i] != -100
+
+                # prediction에서 마스킹된 부분만 디코딩
+                pred_tokens = pred_ids[i][mask]
+                label_tokens = labels[i][mask]
+
+                pred_text = self.tokenizer.decode(pred_tokens, skip_special_tokens=True)
+                label_text = self.tokenizer.decode(label_tokens, skip_special_tokens=True)
+
+                decoded_preds.append(pred_text)
+                decoded_labels.append(label_text)
+            # pred_ids = torch.argmax(outputs.logits, dim=-1)
+            # decoded_preds = self.tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
+            
+            # labels = inputs['labels'].clone()
+            # labels[labels == -100] = self.tokenizer.pad_token_id
+            # decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
             return loss, decoded_preds, decoded_labels
 
         return loss

@@ -18,6 +18,7 @@ class BLIP2ForPhi(nn.Module):
 
     
     def forward(self, pixel_values, input_ids, attention_mask, labels=None):
+        print("🔥 Forward called!")
         image_embeds = self.vision_model(pixel_values).last_hidden_state
 
         batch_size = image_embeds.shape[0]
