@@ -67,7 +67,7 @@ class ImageCaptioningDataset(Dataset):
             
             
             pixel_values = self.transforms(image)
-            prompt = "Describe the image.\nAnswer : "
+            prompt = "Describe the image.\nAnswer :"
             
             len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
 
