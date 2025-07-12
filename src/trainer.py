@@ -180,7 +180,7 @@ class CustomTrainer:
             "epoch": epoch + 1,
             "model_state_dict": trainable_state_dict,
             "optimizer_state_dict": self.optimizer.state_dict(),
-            # "scaler_state_dict": self.scaler.state_dict(),
+            "scaler_state_dict": self.scaler.state_dict(),
             "scheduler_state_dict": self.scheduler.state_dict(),
             "train_loss": train_loss,
             "val_loss": val_loss,
@@ -220,7 +220,7 @@ class CustomTrainer:
         
         self.model.load_state_dict(checkpoint['model_state_dict'], strict=False)
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        # self.scaler.load_state_dict(checkpoint['scaler_state_dict'])
+        self.scaler.load_state_dict(checkpoint['scaler_state_dict'])
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         
         start_epoch = checkpoint['epoch']
