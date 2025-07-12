@@ -8,20 +8,26 @@ from pathlib import Path
 from collections import deque
 from huggingface_hub import upload_file, hf_hub_download
 import wandb
+import random
+import numpy as np
+import torch
 
 
 class CustomTrainer:
     
     def __init__(self, model: nn.Module, optimizer, tokenizer, train_dataset, dataset_name, val_dataset=None, batch_size=8, save_dir_root="./checkpoints", repo_id=None):
         
+        set_seed(seed=42)
+        g = torch.Generator()
+        g.manual_seed(self.seed)
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
         self.optimizer = optimizer
         self.tokenizer = tokenizer
         
-        self.train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True, collate_fn=custom_collate_fn)
-        self.val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=16, pin_memory=True, collate_fn=custom_collate_fn) if val_dataset else None
+        self.train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True, collate_fn=custom_collate_fn, generator=g)
+        self.val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=16, pin_memory=True, collate_fn=custom_collate_fn, generator=g) if val_dataset else None
         self.dataset_name = dataset_name
 
 
@@ -249,3 +255,13 @@ def custom_collate_fn(batch):
     if not batch:
         return None
     return torch.utils.data.dataloader.default_collate(batch)
+
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+

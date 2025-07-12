@@ -214,7 +214,7 @@ def get_captioning_datasets(dataset_name, image_processor, tokenizer, tokenizer_
     # Use only first dict
     raw_dataset = list(raw_datasets.values())[0]
 
-    split_dataset = raw_dataset.train_test_split(test_size=0.2)
+    split_dataset = raw_dataset.train_test_split(test_size=0.2, seed=42)
     train_raw_dataset = split_dataset['train']
     eval_raw_dataset = split_dataset['test']
 

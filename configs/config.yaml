@@ -32,12 +32,12 @@ model:
 
 # -- Training arguments --
 training:
-  num_epochs: 10
-  batch_size: 4
+  num_epochs: 50
+  batch_size: 64
   learning_rate: 1e-5
   weight_decay: 0.01
   warmup_ratio: 0.1
-  tokenizer_max_length: 64
+  tokenizer_max_length: 128
 
 hf:
   repo_id: 'DRPARKSTREET/BLIP2_PHI1.5'

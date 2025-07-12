@@ -17,9 +17,11 @@ import wandb
 # From src dir
 from model import BLIP2ForPhi, setup_model, select_train_params
 from dataset import ImageCaptioningDataset, get_captioning_datasets
-from trainer import CustomTrainer
+from trainer import CustomTrainer, set_seed
 
 os.environ["HF_TOKEN"] = "HF TOKEN"
+
+set_seed(seed=42)
 
 BASE_DIR = Path("..").resolve()
 CONFIG_DIR = BASE_DIR / "configs"
