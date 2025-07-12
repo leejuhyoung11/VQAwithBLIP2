@@ -68,7 +68,7 @@ trainer = CustomTrainer(
         dataset_name='ImageCaptioning-stage1',
         batch_size=config['training']['batch_size'],
         save_dir_root=config['path']['save_dir'],
-        repo_id=config['hf']['repo_id']
+        # repo_id=config['hf']['repo_id']
     )
 
 print("Starting training...")
