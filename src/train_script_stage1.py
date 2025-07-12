@@ -12,6 +12,8 @@ from peft import LoraConfig, get_peft_model
 from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader, Subset, ConcatDataset
 
+import wandb
+
 # From src dir
 from model import BLIP2ForPhi, setup_model, select_train_params
 from dataset import ImageCaptioningDataset, get_captioning_datasets
@@ -23,10 +25,24 @@ BASE_DIR = Path("..").resolve()
 CONFIG_DIR = BASE_DIR / "configs"
 OUTPUT_DIR = BASE_DIR / "outputs"
 
+
 config_path = CONFIG_DIR / "config.yaml"
 
 with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
+
+wandb.login()
+
+wandb.init(
+    project="blip2-project",
+    name="ImageCaptioning-stage1",
+    config={
+        "learning_rate": config['training']['learning_rate'],
+        "batch_size": config['training']['batch_size'],
+        "epochs": config['training']['num_epochs'],
+    }
+)
+
 
 model, image_processor, tokenizer = setup_model(config)
 num_trainable_params = select_train_params(model, language_model=False)
@@ -73,6 +89,6 @@ trainer = CustomTrainer(
 
 print("Starting training...")
 trainer.train(
-    num_epochs=50,
+    num_epochs=config['training']['num_epochs'],
 )
 print("Training finished!")

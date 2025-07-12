@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from collections import deque
 from huggingface_hub import upload_file, hf_hub_download
+import wandb
 
 
 class CustomTrainer:
@@ -109,10 +110,18 @@ class CustomTrainer:
                 self.scheduler.step()
                 
                 epoch_loss += loss.item()
+
                 progress_bar.set_postfix(loss=loss.item(), lr=self.scheduler.get_last_lr()[0])
             
             avg_train_loss = epoch_loss / len(self.train_dataloader)
             print(f"Epoch {epoch+1} | Average Train Loss: {avg_train_loss:.4f}")
+
+            if wandb.run is not None:
+                wandb.log({
+                    "train/loss": avg_train_loss,
+                    "train/lr": self.scheduler.get_last_lr()[0],
+                    "epoch": epoch + 1
+                })
 
             if self.val_dataloader:
                 avg_val_loss = self.evaluate(epoch)
@@ -138,6 +147,13 @@ class CustomTrainer:
                 last_labels.extend(decoded_labels)
 
         avg_val_loss = total_loss / len(self.val_dataloader)
+
+        if wandb.run is not None:
+            wandb.log({
+                "val/avg_loss": avg_val_loss,
+                "epoch": epoch + 1
+            })
+
         print(f"\n--- Validation Results for Epoch {epoch+1} ---")
         print(f"Average Validation Loss: {avg_val_loss:.4f}")
         
