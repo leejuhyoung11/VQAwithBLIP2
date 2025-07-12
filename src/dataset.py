@@ -220,8 +220,8 @@ def get_captioning_datasets(dataset_name, image_processor, tokenizer, tokenizer_
 
     train_dataset = ImageCaptioningDataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length)
     valid_dataset = ImageCaptioningDataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length)
-    train_debug = Subset(train_dataset, indices=range(50))
-    valid_debug = Subset(valid_dataset, indices=range(50))
+    train_debug = Subset(train_dataset, indices=range(10))
+    valid_debug = Subset(valid_dataset, indices=range(10))
 
     return train_dataset, valid_dataset, train_debug, valid_debug
 
