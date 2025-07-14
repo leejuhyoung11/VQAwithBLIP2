@@ -6,7 +6,8 @@ from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader, Subset
 from collections import Counter
 from tqdm import tqdm
-import random
+import random, os
+import pandas as pd
 
 class ImageCaptioningDataset(Dataset):
     def __init__(self, hf_dataset, image_processor, tokenizer, num_query_tokens=32, max_length=128, is_train=True):
@@ -139,24 +140,32 @@ class VQADataset(Dataset):
     def __getitem__(self, idx):
         try:
             item = self.dataset[idx]
-
-            #GQA Dataset
+            sample_type = "short"
+            #GQA Dataset : short
             if self.image_dataset:
                 image_id = item['imageId']
                 image = self.image_dataset[image_id].convert("RGB")
                 question = item['question']
                 answer = item['fullAnswer']
+                
 
             else:
                 image = item['image'].convert("RGB")
-                question = item['question']
-                #VQAV2 Dataset
+                
+                #VQAV2 Dataset : short
                 if 'multiple_choice_answer' in item and item['multiple_choice_answer']:
+                    question = item['question']
                     answer = item['multiple_choice_answer']
-                # OKVQA Dataset
+                # LLava Next-Data : long
+                elif 'conversations' in item and item['conversations']:
+                    sample_type = "long"
+                    question, answer = export_qna_from_conversation(item, seed=idx)
+                # OKVQA Dataset : Reasoning
                 else:
+                    question = item['question']
                     if not item['answers']:
                         return None
+                    sample_type = "reasoning"
                     answers = item['answers']
                     answer_counts = Counter(answers)
                     # Choose most common answer from the list
@@ -191,12 +200,85 @@ class VQADataset(Dataset):
                 "pixel_values": pixel_values.squeeze(),
                 "input_ids": inputs.input_ids.squeeze(),   
                 "attention_mask": inputs.attention_mask.squeeze(),
-                "labels": combined_labels.squeeze()
+                "labels": combined_labels.squeeze(),
+                "sample_type": sample_type
             }
         except Exception as e:
             print(f"Whil processing index {idx} , error occured ({e}), Skip Element.")
             return None
 
+
+class LlavaInstructDataset(Dataset):
+    def __init__(self, hf_dataset, image_processor, tokenizer, num_query_tokens=32, max_length=128, is_train=True, image_dataset=None):
+        self.dataset = hf_dataset
+        self.image_processor = image_processor
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.num_query_tokens = num_query_tokens
+        self.is_train = is_train
+        self.image_dir = image_dataset
+
+        if self.is_train:
+            self.transforms = transforms.Compose([
+                transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
+                transforms.RandomHorizontalFlip(p=0.4),
+                transforms.RandomVerticalFlip(p=0.4),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                transforms.ToTensor(), 
+                transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711]) # 정규화
+            ])
+
+        else: 
+            self.transforms = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])
+            ])
+        
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        try:
+            sample_type = "reasoning"
+            item = self.dataset[idx]
+            image_path = os.path.join(self.image_dir, item['image'])
+            image = Image.open(image_path).convert("RGB")
+
+            question, answer = export_qna_from_conversation(item, seed=idx)
+
+            pixel_values = self.transforms(image)
+
+            prompt = (f"Question: {question}\n" +"Answer:")
+            len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
+
+            inputs = self.tokenizer(
+                prompt + answer,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_length,
+                return_tensors="pt"
+            )
+            
+            answer_tokens = inputs.input_ids.clone()
+            answer_tokens[:, :len_of_prompt] = -100
+            answer_tokens[answer_tokens == self.tokenizer.pad_token_id] = -100
+
+            query_labels = torch.full((1, self.num_query_tokens), -100)
+            combined_labels = torch.cat([query_labels, answer_tokens], dim=1)
+
+
+            return {
+                "pixel_values": pixel_values.squeeze(),
+                "input_ids": inputs.input_ids.squeeze(),   
+                "attention_mask": inputs.attention_mask.squeeze(),
+                "labels": combined_labels.squeeze(),
+                "sample_type": sample_type
+            }
+        except Exception as e:
+            print(f"Whil processing index {idx} , error occured ({e}), Skip Element.")
+            return None
 
 
 
@@ -218,7 +300,7 @@ def get_captioning_datasets(dataset_name, image_processor, tokenizer, tokenizer_
     return train_dataset, valid_dataset, train_debug, valid_debug
 
 
-def get_vqa_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=128):
+def get_vqa_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=128, img_dir=None):
     
     id_to_image = None
     # images and quesitons are seperated
@@ -234,6 +316,11 @@ def get_vqa_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_len
         # Use only first dict
         raw_dataset = list(raw_datasets.values())[0]
         image_dataset = None
+
+    # set Image Dir for Llava Instruck 150k 
+    if dataset_name == "liuhaotian/LLaVA-Instruct-150K" and img_dir:
+        id_to_image = img_dir
+
     
     split_dataset = raw_dataset.train_test_split(test_size=0.2, seed=42)
     train_raw_dataset = split_dataset['train']
@@ -246,3 +333,47 @@ def get_vqa_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_len
 
     return train_dataset, valid_dataset, train_debug, valid_debug
 
+
+
+def get_llava_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=128, df_dir=None, img_dir=None):
+    df = pd.read_json(df_dir)
+
+    if "id" in df.columns:
+        df = df.drop(columns=["id"])
+
+    ds = Dataset.from_pandas(df)
+
+    split_dataset = ds.train_test_split(test_size=0.2, seed=42)
+    train_raw_dataset = split_dataset['train']
+    eval_raw_dataset = split_dataset['test']
+
+    train_dataset = VQADataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=img_dir)
+    valid_dataset = VQADataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=img_dir)
+    train_debug = Subset(train_dataset, indices=range(50))
+    valid_debug = Subset(valid_dataset, indices=range(50))
+
+    return train_dataset, valid_dataset, train_debug, valid_debug
+
+
+
+# export_qna_from_conversation(ds['train'][5], 33)
+def export_qna_from_conversation(item, seed=None):
+    conv = item['conversations']
+    if not conv:
+        return None
+    qna_list = []
+    for i in range(0, len(conv) - 1, 2):
+            q, a = conv[i], conv[i + 1]
+            if q.get("from") == "human" and a.get("from") == "gpt":
+                
+                question = q["value"].replace("<image>\n", "").strip()
+                answer   = a["value"].strip()
+
+                qna_list.append([question, answer])
+                
+
+    local_random = random.Random(seed)
+
+    qna = local_random.choice(qna_list)
+    
+    return qna[0], qna[1]

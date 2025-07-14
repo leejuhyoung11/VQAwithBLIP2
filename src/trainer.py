@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import get_cosine_schedule_with_warmup
@@ -10,7 +11,7 @@ from huggingface_hub import upload_file, hf_hub_download
 import wandb
 import random
 import numpy as np
-import torch
+
 
 
 class CustomTrainer:
@@ -30,7 +31,7 @@ class CustomTrainer:
         self.val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=16, pin_memory=True, collate_fn=custom_collate_fn, generator=g) if val_dataset else None
         self.dataset_name = dataset_name
 
-
+        self.global_step = 0
         self.scaler = torch.cuda.amp.GradScaler()
         self.scheduler = None 
 
@@ -43,11 +44,21 @@ class CustomTrainer:
         self.repo_id = repo_id
 
     def _forward_step(self, batch: dict, return_preds: bool = False):
+        sample_types = batch.pop("sample_type", None)
         inputs = {k: v.to(self.device) for k, v in batch.items()}
         
         with torch.autocast(device_type='cuda', dtype=torch.float16):
             outputs = self.model(**inputs)
-            loss = outputs.loss
+
+            if sample_types:
+                loss = compute_weighted_loss(
+                logits=outputs.logits,
+                labels=batch["labels"],
+                sample_types=sample_types, 
+                global_step=self.global_step,
+                log_wandb=True)
+            else:
+                loss = outputs.loss
 
         if return_preds:
             pred_ids = torch.argmax(outputs.logits, dim=-1)
@@ -81,6 +92,7 @@ class CustomTrainer:
     def train(self, num_epochs: int, resume_from_checkpoint: str = None, new_stage: bool = None):
         total_steps = len(self.train_dataloader) * num_epochs
         warmup_steps = int(0.1 * total_steps)
+        self.global_step = 0
         
         self.scheduler = get_cosine_schedule_with_warmup(
             optimizer=self.optimizer,
@@ -114,6 +126,8 @@ class CustomTrainer:
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
+
+                self.global_step += 1
                 
                 epoch_loss += loss.item()
 
@@ -265,3 +279,39 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+
+def compute_weighted_loss(logits, labels, sample_types: list[str], global_step: int = None, log_wandb: bool = False):
+
+    weight_map = {"short": 1.0, "reasoning": 1.5, "long": 1.2}
+    
+    B, L, V = logits.shape
+
+    token_loss = F.cross_entropy(
+        logits.view(-1, V),     # (B*L, V)
+        labels.view(-1),        # (B*L)
+        reduction="none"
+    ).view(B, L)  # (B, L)
+
+    mask = labels != -100  # (B, L)
+    sample_loss = (token_loss * mask).sum(dim=1) / mask.sum(dim=1)  # (B,)
+
+    weights = torch.tensor(
+        [weight_map.get(t, 1.0) for t in sample_types],
+        device=logits.device,
+        dtype=sample_loss.dtype
+    )
+
+
+    if log_wandb and global_step is not None:
+        for t in set(sample_types):
+            idx = [i for i, st in enumerate(sample_types) if st == t]
+            if idx:
+                wandb.log(
+                    {f"loss_per_type/{t}": round(sample_loss[idx].mean().item(), 4)},
+                    step=global_step
+                )
+
+    return (sample_loss * weights).mean()
+
+
+    
