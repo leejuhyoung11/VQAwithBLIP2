@@ -54,6 +54,13 @@ class ImageCaptioningDataset(Dataset):
                     valid_captions = [c.strip().replace('\n', ' ') for c in captions_list if c and c.strip()]
                 if valid_captions:
                     caption = valid_captions[0]
+            #3 textcaps
+            elif 'caption_str' in item and item['caption_str']:
+                captions_list = item.get('caption_str')
+                if captions_list:
+                    valid_captions = [c.strip().replace('\n', ' ') for c in captions_list if c and c.strip()]
+                if valid_captions:
+                    caption = valid_captions[0]
             #LLaVa-Recap
             elif 'conversations' in item and item['conversations']:
                 for turn in item['conversations']:
@@ -168,12 +175,12 @@ class VQADataset(Dataset):
                 prompt + answer,
                 padding="max_length",
                 truncation=True,
-                max_length=32,
+                max_length=self.max_length,
                 return_tensors="pt"
             )
             
             answer_tokens = inputs.input_ids.clone()
-            answer_tokens[0, :len_of_prompt] = -100
+            answer_tokens[:, :len_of_prompt] = -100
             answer_tokens[answer_tokens == self.tokenizer.pad_token_id] = -100
 
             query_labels = torch.full((1, self.num_query_tokens), -100)
@@ -191,22 +198,7 @@ class VQADataset(Dataset):
             return None
 
 
-def get_captioning_prompt():
-    captioning = [
-    "A short image caption : \n Answer :",
-    "A short image description : \n Answer :",
-    "Write a short description for the image \n Answer :",
-    "Write a description for the photo \n Answer :",
-    "Provide a description of what is presented in the photo. \n Answer :",
-    "Briefly describe the content of the image. \n Answer :",
-    "Can you briefly explain what you see in the image? \n Answer :",
-    "Could you use a few words to describe what you perceive in the photo? \n Answer :",
-    "Please provide a short depiction of the picture. \n Answer :",
-    "Using language, provide a short account of the image. \n Answer :",
-    "Use a few words to illustrate what is happening in the picture. \n Answer :"
-    ]
 
-    return random.choice(captioning)
 
 
 def get_captioning_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=128):

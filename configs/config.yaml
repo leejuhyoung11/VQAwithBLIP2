@@ -12,10 +12,14 @@ path:
 dataset:
   cocoCaption: "lmms-lab/COCO-Caption" # Only use 'val'
   flickr: "lmms-lab/flickr30k"
+  textCaps: "lmms-lab/TextCaps"
   llava: "lmms-lab/LLaVA-ReCap-558K"
   vqav2: "lmms-lab/VQAv2"
   okvqa: "lmms-lab/OK-VQA"
   gqa: ["lmms-lab/GQA", ["train_balanced_images", "train_balanced_instructions"]] # train_balanced_instructions, train_balanced_images
+  llavaNext: "lmms-lab/LLaVA-NeXT-Data"
+  scienceQA: "derek-thomas/ScienceQA"
+  visual7w: "nimapourjafar/mm_visual7w"
 
 # -- Model Configuration --
 model:

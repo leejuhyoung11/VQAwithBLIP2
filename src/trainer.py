@@ -19,7 +19,7 @@ class CustomTrainer:
         
         set_seed(seed=42)
         g = torch.Generator()
-        g.manual_seed(self.seed)
+        g.manual_seed(42)
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
