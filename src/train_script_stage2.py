@@ -56,7 +56,7 @@ train_dataset1, valid_dataset1, train_debug1, valid_debug1 = get_vqa_datasets(co
 train_dataset2, valid_dataset2, train_debug2, valid_debug2 = get_vqa_datasets(config['dataset']['okvqa'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
 train_dataset3, valid_dataset3, train_debug3, valid_debug3 = get_vqa_datasets(config['dataset']['gqa'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
 train_dataset4, valid_dataset4, train_debug4, valid_debug4 = get_vqa_datasets(config['dataset']['llavaNext'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
-train_dataset5, valid_dataset5, train_debug5, valid_debug5 = get_llava_datasets(config['dataset']['instruct150'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'], df_dir=config['path']['instruct_df'], img_dir=config['path']['coco2017'])
+train_dataset5, valid_dataset5, train_debug5, valid_debug5 = get_llava_datasets(config['dataset']['instruct150'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'], df_dir=config['path']['instruct_df'], img_dir=config['path']['coco2014'])
 
 concat_train_dataset = ConcatDataset([train_dataset1, train_dataset2])
 concat_valid_dataset = ConcatDataset([valid_dataset1, valid_dataset2])

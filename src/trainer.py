@@ -51,9 +51,10 @@ class CustomTrainer:
             outputs = self.model(**inputs)
 
             if sample_types:
+                labels = inputs["labels"]
                 loss = compute_weighted_loss(
                 logits=outputs.logits,
-                labels=batch["labels"],
+                labels=labels,
                 sample_types=sample_types, 
                 global_step=self.global_step,
                 log_wandb=True)
@@ -118,6 +119,9 @@ class CustomTrainer:
 
             progress_bar = tqdm(self.train_dataloader, desc=f"Epoch {epoch+1}/{num_epochs} - Training")
             for batch in progress_bar:
+                if batch is None:
+                    continue
+
                 self.optimizer.zero_grad()
                 
                 loss = self._forward_step(batch)
@@ -160,6 +164,8 @@ class CustomTrainer:
         with torch.no_grad():
             progress_bar = tqdm(self.val_dataloader, desc=f"Epoch {epoch+1} - Evaluating")
             for batch in progress_bar:
+                if batch is None:
+                    continue
                 loss, decoded_preds, decoded_labels = self._forward_step(batch, return_preds=True)
                 total_loss += loss.item()
                 

@@ -4,9 +4,10 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader, Subset
+from datasets import Dataset as HFDataset
 from collections import Counter
 from tqdm import tqdm
-import random, os
+import random, os, re
 import pandas as pd
 
 class ImageCaptioningDataset(Dataset):
@@ -159,7 +160,10 @@ class VQADataset(Dataset):
                 # LLava Next-Data : long
                 elif 'conversations' in item and item['conversations']:
                     sample_type = "long"
-                    question, answer = export_qna_from_conversation(item, seed=idx)
+                    res = export_qna_from_conversation(item, seed=idx)
+                    if res is None:
+                        return None
+                    question, answer = res
                 # OKVQA Dataset : Reasoning
                 else:
                     question = item['question']
@@ -175,6 +179,10 @@ class VQADataset(Dataset):
                     else:
                         return None
             
+            # Exclude non-english data
+            if contains_chinese(question) or contains_chinese(answer):
+                return None
+
             pixel_values = self.transforms(image)
 
             prompt = (f"Question: {question}\n" +"Answer:")
@@ -217,6 +225,7 @@ class LlavaInstructDataset(Dataset):
         self.num_query_tokens = num_query_tokens
         self.is_train = is_train
         self.image_dir = image_dataset
+        self.image_name_prefix = "COCO_train2014_"
 
         if self.is_train:
             self.transforms = transforms.Compose([
@@ -243,7 +252,8 @@ class LlavaInstructDataset(Dataset):
         try:
             sample_type = "reasoning"
             item = self.dataset[idx]
-            image_path = os.path.join(self.image_dir, item['image'])
+            image_name = self.image_name_prefix+item['image']
+            image_path = os.path.join(self.image_dir, image_name)
             image = Image.open(image_path).convert("RGB")
 
             question, answer = export_qna_from_conversation(item, seed=idx)
@@ -317,10 +327,6 @@ def get_vqa_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_len
         raw_dataset = list(raw_datasets.values())[0]
         image_dataset = None
 
-    # set Image Dir for Llava Instruck 150k 
-    if dataset_name == "liuhaotian/LLaVA-Instruct-150K" and img_dir:
-        id_to_image = img_dir
-
     
     split_dataset = raw_dataset.train_test_split(test_size=0.2, seed=42)
     train_raw_dataset = split_dataset['train']
@@ -341,14 +347,14 @@ def get_llava_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_l
     if "id" in df.columns:
         df = df.drop(columns=["id"])
 
-    ds = Dataset.from_pandas(df)
+    ds = HFDataset.from_pandas(df)
 
     split_dataset = ds.train_test_split(test_size=0.2, seed=42)
     train_raw_dataset = split_dataset['train']
     eval_raw_dataset = split_dataset['test']
 
-    train_dataset = VQADataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=img_dir)
-    valid_dataset = VQADataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=img_dir)
+    train_dataset = LlavaInstructDataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=img_dir)
+    valid_dataset = LlavaInstructDataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=img_dir)
     train_debug = Subset(train_dataset, indices=range(50))
     valid_debug = Subset(valid_dataset, indices=range(50))
 
@@ -365,11 +371,20 @@ def export_qna_from_conversation(item, seed=None):
     for i in range(0, len(conv) - 1, 2):
             q, a = conv[i], conv[i + 1]
             if q.get("from") == "human" and a.get("from") == "gpt":
-                
-                question = q["value"].replace("<image>\n", "").strip()
+                question = re.sub(r"<image>\s*", "", q["value"]).strip()
+                question = question.replace("GPT-T-COCO", "")
+                # question = q["value"].replace("<image>\n", "").replace("<image>", "").strip()
                 answer   = a["value"].strip()
 
+                if "[" in question and "]" in question:
+                    continue
+                if "[" in answer and "]" in answer:
+                    continue
+
                 qna_list.append([question, answer])
+
+    if not qna_list:
+        return None
                 
 
     local_random = random.Random(seed)
@@ -377,3 +392,7 @@ def export_qna_from_conversation(item, seed=None):
     qna = local_random.choice(qna_list)
     
     return qna[0], qna[1]
+
+
+def contains_chinese(text):
+    return any('\u4e00' <= c <= '\u9fff' for c in text)
