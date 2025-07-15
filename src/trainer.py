@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import get_cosine_schedule_with_warmup
+from transformers import get_cosine_schedule_with_warmup, get_linear_schedule_with_warmup
 import os
 from pathlib import Path
 from collections import deque
@@ -95,7 +95,13 @@ class CustomTrainer:
         warmup_steps = int(0.1 * total_steps)
         self.global_step = 0
         
-        self.scheduler = get_cosine_schedule_with_warmup(
+        # self.scheduler = get_cosine_schedule_with_warmup(
+        #     optimizer=self.optimizer,
+        #     num_warmup_steps=warmup_steps,
+        #     num_training_steps=total_steps,
+        # )
+
+        self.scheduler = get_linear_schedule_with_warmup(
             optimizer=self.optimizer,
             num_warmup_steps=warmup_steps,
             num_training_steps=total_steps,
