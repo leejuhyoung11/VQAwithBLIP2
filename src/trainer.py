@@ -102,10 +102,16 @@ class CustomTrainer:
         )
 
         if resume_from_checkpoint:
-            if self.repo_id:
-                start_epoch = self.load_checkpoint(resume_from_checkpoint, self.repo_id)        
+            if new_stage:
+                if self.repo_id:
+                    start_epoch = self.load_checkpoint(resume_from_checkpoint, repo_id=self.repo_id, new_stage=True)        
+                else:
+                    start_epoch = self.load_checkpoint(resume_from_checkpoint, new_stage=True)
             else:
-                start_epoch = self.load_checkpoint(resume_from_checkpoint)
+                if self.repo_id:
+                    start_epoch = self.load_checkpoint(resume_from_checkpoint, repo_id=self.repo_id)        
+                else:
+                    start_epoch = self.load_checkpoint(resume_from_checkpoint)
             print(f"Resume from checkpoint {start_epoch}...")
         else:
             start_epoch = 0
@@ -244,7 +250,7 @@ class CustomTrainer:
                 remote_subdir=save_path.name 
             )
 
-    def load_checkpoint(self, checkpoint_path: str, repo_id=None):
+    def load_checkpoint(self, checkpoint_path: str, repo_id=None, new_stage=False):
 
         if repo_id:
             print(f"Load checkpoint from HugginFace...")
@@ -261,9 +267,11 @@ class CustomTrainer:
             print(f"Warning : No model checkpoint ")
         
         self.model.load_state_dict(checkpoint['model_state_dict'], strict=False)
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.scaler.load_state_dict(checkpoint['scaler_state_dict'])
-        self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        if not new_stage:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.scaler.load_state_dict(checkpoint['scaler_state_dict'])
+            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            print(f"optimizer, scaler, scheduler is loaded")
         
         start_epoch = checkpoint['epoch']
         print(f"✅ Checkpoint loaded. Resuming from epoch {start_epoch}")

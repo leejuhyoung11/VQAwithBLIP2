@@ -19,7 +19,7 @@ from model import BLIP2ForPhi, setup_model, select_train_params
 from dataset import VQADataset, LlavaInstructDataset, get_vqa_datasets, get_llava_datasets, export_qna_from_conversation
 from trainer import CustomTrainer, set_seed
 
-os.environ["HF_TOKEN"] = "HF TOKEN"
+os.environ["HF_TOKEN"] = ""
 
 
 BASE_DIR = Path("..").resolve()
@@ -52,24 +52,22 @@ print(f"training {num_trainable_params} params...")
 print(f"Preparing dataset...")
 
 
+
 train_dataset1, valid_dataset1, train_debug1, valid_debug1 = get_vqa_datasets(config['dataset']['vqav2'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
-train_dataset2, valid_dataset2, train_debug2, valid_debug2 = get_vqa_datasets(config['dataset']['okvqa'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
-train_dataset3, valid_dataset3, train_debug3, valid_debug3 = get_vqa_datasets(config['dataset']['gqa'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
-train_dataset4, valid_dataset4, train_debug4, valid_debug4 = get_vqa_datasets(config['dataset']['llavaNext'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
-train_dataset5, valid_dataset5, train_debug5, valid_debug5 = get_llava_datasets(config['dataset']['instruct150'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'], df_dir=config['path']['instruct_df'], img_dir=config['path']['coco2014'])
+train_dataset2, valid_dataset2, train_debug2, valid_debug2 = get_vqa_datasets(config['dataset']['gqa'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
+train_dataset3, valid_dataset3, train_debug3, valid_debug3 = get_vqa_datasets(config['dataset']['llavaNext'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
+train_dataset4, valid_dataset4, train_debug4, valid_debug4 = get_llava_datasets(config['dataset']['instruct150'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'], df_dir=config['path']['instruct_df'], img_dir=config['path']['coco2014'])
 
-concat_train_dataset = ConcatDataset([train_dataset1, train_dataset2])
-concat_valid_dataset = ConcatDataset([valid_dataset1, valid_dataset2])
+subset_of_train_dataset2 = Subset(train_dataset2, indices=range(len(train_dataset2) // 2))
+subset_of_valid_dataset2 = Subset(valid_dataset2, indices=range(len(valid_dataset2) // 2))
 
-num_samples_to_train, num_samples_to_valid = int(len(concat_train_dataset)*0.2), int(len(concat_valid_dataset)*0.2)
+concat_train_dataset = ConcatDataset([train_dataset1, train_dataset2, train_dataset3, train_dataset4])
+concat_valid_dataset = ConcatDataset([valid_dataset1, valid_dataset2, valid_dataset3, valid_dataset4])
 
-subset_of_train_dataset3 = Subset(train_dataset3, indices=range(num_samples_to_train))
-subset_of_valid_dataset3 = Subset(valid_dataset3, indices=range(num_samples_to_valid))
+concat_train_debug = ConcatDataset([train_debug1, train_debug2, train_debug3, train_debug4])
+concat_valid_debug = ConcatDataset([valid_debug1, valid_debug2, valid_debug3, valid_debug4])
 
-final_train_dataset = ConcatDataset([concat_train_dataset, subset_of_train_dataset3])
-final_valid_dataset = ConcatDataset([concat_valid_dataset, subset_of_valid_dataset3])
-
-print(f"Train Dataset length: {len(final_train_dataset)}, Valid Dataset length: {len(final_valid_dataset)}")
+print(f"Train Dataset length: {len(concat_train_dataset)}, Valid Dataset length: {len(concat_valid_dataset)}")
 
 
 
@@ -84,8 +82,8 @@ trainer = CustomTrainer(
         model=model,
         optimizer=optimizer,
         tokenizer=tokenizer,
-        train_dataset=train_debug2,
-        val_dataset=train_debug2,
+        train_dataset=concat_train_dataset,
+        val_dataset=concat_valid_dataset,
         dataset_name='ImageCaptioning-stage2',
         batch_size=config['training']['batch_size'],
         save_dir_root=config['path']['save_dir'],
@@ -97,9 +95,9 @@ trainer = CustomTrainer(
 
 print("Starting training...")
 trainer.train(
-    num_epochs=config['training']['num_epochs'],
+    num_epochs=50,
     # Add checkpoint path
-    resume_from_checkpoint=config['path'].get('stage1_checkpoint'),
+    resume_from_checkpoint='ImageCaptioning-stage1/epoch_11/checkpoint_epoch11.pt',
     new_stage=True
 )
 print("Training finished!")
