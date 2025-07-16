@@ -363,7 +363,7 @@ def get_llava_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_l
 
 
 # export_qna_from_conversation(ds['train'][5], 33)
-def export_qna_from_conversation(item, seed=None):
+def export_qna_from_conversation(item, seed=42):
     conv = item['conversations']
     if not conv:
         return None
@@ -372,10 +372,11 @@ def export_qna_from_conversation(item, seed=None):
             q, a = conv[i], conv[i + 1]
             if q.get("from") == "human" and a.get("from") == "gpt":
                 question = re.sub(r"<image>\s*", "", q["value"]).strip()
-                question = question.replace("GPT-T-COCO", "")
+                # question = question.replace("GPT-T-COCO", "")
                 # question = q["value"].replace("<image>\n", "").replace("<image>", "").strip()
                 answer   = a["value"].strip()
-
+                if len(answer) < 12:
+                    continue
                 if "[" in question and "]" in question:
                     continue
                 if "[" in answer and "]" in answer:

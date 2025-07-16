@@ -50,16 +50,8 @@ class CustomTrainer:
         with torch.autocast(device_type='cuda', dtype=torch.float16):
             outputs = self.model(**inputs)
 
-            if sample_types:
-                labels = inputs["labels"]
-                loss = compute_weighted_loss(
-                logits=outputs.logits,
-                labels=labels,
-                sample_types=sample_types, 
-                global_step=self.global_step,
-                log_wandb=True)
-            else:
-                loss = outputs.loss
+            
+            loss = outputs.loss
 
         if return_preds:
             pred_ids = torch.argmax(outputs.logits, dim=-1)
