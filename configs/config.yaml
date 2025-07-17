@@ -17,12 +17,13 @@ dataset:
   textCaps: "lmms-lab/TextCaps"
   llava: "lmms-lab/LLaVA-ReCap-558K"
   vqav2: "lmms-lab/VQAv2"
-  okvqa: "lmms-lab/OK-VQA"
   gqa: ["lmms-lab/GQA", ["train_balanced_images", "train_balanced_instructions"]] # train_balanced_instructions, train_balanced_images
   llavaNext: "lmms-lab/LLaVA-NeXT-Data"
   instruct150: "liuhaotian/LLaVA-Instruct-150K"
-  scienceQA: "derek-thomas/ScienceQA"
+  aokvqa: "HuggingFaceM4/A-OKVQA"
+  okvqa: "lmms-lab/OK-VQA"
   visual7w: "nimapourjafar/mm_visual7w"
+
 
 # -- Model Configuration --
 model:
@@ -41,25 +42,10 @@ model:
 training:
   num_epochs: 50
   batch_size: 64
-  learning_rate: 2e-5
+  learning_rate: 1e-5
   weight_decay: 0.01
   warmup_ratio: 0.1
-  tokenizer_max_length: 128
+  tokenizer_max_length: 180
 
 hf:
   repo_id: 'DRPARKSTREET/BLIP2_PHI1.5'
-
-prompt:
-  captioning: [
-    "A short image caption: \n Answer :",
-    "A short image description: \n Answer :",
-    "Write a short description for the image \n Answer :",
-    "Write a description for the photo \n Answer :",
-    "Provide a description of what is presented in the photo. \n Answer :",
-    "Briefly describe the content of the image. \n Answer :",
-    "Can you briefly explain what you see in the image? \n Answer :",
-    "Could you use a few words to describe what you perceive in the photo? \n Answer :",
-    "Please provide a short depiction of the picture. \n Answer :",
-    "Using language, provide a short account of the image. \n Answer :",
-    "Use a few words to illustrate what is happening in the picture. \n Answer :"
-  ]

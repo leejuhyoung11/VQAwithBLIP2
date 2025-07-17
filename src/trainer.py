@@ -63,7 +63,7 @@ class CustomTrainer:
             for i in range(labels.size(0)):
                 mask = labels[i] != -100
 
-                # prediction에서 마스킹된 부분만 디코딩
+                
                 pred_tokens = pred_ids[i][mask]
                 label_tokens = labels[i][mask]
 

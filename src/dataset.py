@@ -291,6 +291,157 @@ class LlavaInstructDataset(Dataset):
             return None
 
 
+class AOKVQADataset(Dataset):
+    def __init__(self, hf_dataset, image_processor, tokenizer, num_query_tokens=32, max_length=128, is_train=True, image_dataset=None):
+        self.dataset = hf_dataset
+        self.image_processor = image_processor
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.num_query_tokens = num_query_tokens
+        self.is_train = is_train
+        self.image_dataset = image_dataset
+
+        if self.is_train:
+            self.transforms = transforms.Compose([
+                transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
+                transforms.RandomHorizontalFlip(p=0.4),
+                transforms.RandomVerticalFlip(p=0.4),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                transforms.ToTensor(), 
+                transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711]) # 정규화
+            ])
+
+        else: 
+            self.transforms = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])
+            ])
+        
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        try:
+            item = self.dataset[idx]
+            image = item['image'].convert("RGB")
+            
+            question = item['question']
+            choices = item['choices']
+            answer_idx = item['correct_choice_idx']
+            
+            letter = chr(65 + answer_idx)  
+            answer = f"{letter}. {choices[answer_idx]}"
+
+            pixel_values = self.transforms(image)
+
+            prompt = (
+                "You are a helpful AI that answers multiple-choice questions based on the given image.\n"
+                "Select only the single best answer from A, B, C, or D.\n\n"
+                "Respond only with one letter (e.g., 'A').\n\n"
+                f"Question: {question}\n\n" +
+                "\n".join([f"{chr(65+i)}. {choice}" for i, choice in enumerate(choices)]) +
+                "\n\nAnswer:"
+            )
+
+            len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
+
+            inputs = self.tokenizer(
+                prompt + answer,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_length,
+                return_tensors="pt"
+            )
+            
+            answer_tokens = inputs.input_ids.clone()
+            answer_tokens[:, :len_of_prompt] = -100
+            answer_tokens[answer_tokens == self.tokenizer.pad_token_id] = -100
+
+            query_labels = torch.full((1, self.num_query_tokens), -100)
+            combined_labels = torch.cat([query_labels, answer_tokens], dim=1)
+
+
+            return {
+                "pixel_values": pixel_values.squeeze(),
+                "input_ids": inputs.input_ids.squeeze(),   
+                "attention_mask": inputs.attention_mask.squeeze(),
+                "labels": combined_labels.squeeze(),
+            }
+        except Exception as e:
+            print(f"Whil processing index {idx} , error occured ({e}), Skip Element.")
+            return None
+
+
+class Visual7wDataset(Dataset):
+    def __init__(self, hf_dataset, image_processor, tokenizer, num_query_tokens=32, max_length=128, is_train=True, image_dataset=None):
+        self.dataset = hf_dataset
+        self.image_processor = image_processor
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.num_query_tokens = num_query_tokens
+        self.is_train = is_train
+        
+
+        if self.is_train:
+            self.transforms = transforms.Compose([
+                transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
+                transforms.RandomHorizontalFlip(p=0.4),
+                transforms.RandomVerticalFlip(p=0.4),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                transforms.ToTensor(), 
+                transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711]) # 정규화
+            ])
+
+        else: 
+            self.transforms = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])
+            ])
+        
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        try:
+            
+            item = self.dataset[idx]
+            image = item['image']
+            prompt = item['question']
+            answer = item['answer']
+
+            pixel_values = self.transforms(image)
+            len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
+
+            inputs = self.tokenizer(
+                prompt + answer,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_length,
+                return_tensors="pt"
+            )
+            
+            answer_tokens = inputs.input_ids.clone()
+            answer_tokens[:, :len_of_prompt] = -100
+            answer_tokens[answer_tokens == self.tokenizer.pad_token_id] = -100
+
+            query_labels = torch.full((1, self.num_query_tokens), -100)
+            combined_labels = torch.cat([query_labels, answer_tokens], dim=1)
+
+
+            return {
+                "pixel_values": pixel_values.squeeze(),
+                "input_ids": inputs.input_ids.squeeze(),   
+                "attention_mask": inputs.attention_mask.squeeze(),
+                "labels": combined_labels.squeeze(),
+            }
+        except Exception as e:
+            print(f"Whil processing index {idx} , error occured ({e}), Skip Element.")
+            return None
+
 
 
 def get_captioning_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=128):
@@ -320,7 +471,8 @@ def get_vqa_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_len
         id_to_image = {item['id']: item['image'] for item in tqdm(image_dataset, desc="Building image dictionary")}
         raw_datasets = load_dataset(dataset_name[0], dataset_name[1][1])
         raw_dataset = list(raw_datasets.values())[0]
-        
+    elif isinstance(dataset_name, HFDataset):
+        raw_dataset = dataset_name 
     else:
         raw_datasets = load_dataset(dataset_name)
         # Use only first dict
@@ -362,7 +514,53 @@ def get_llava_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_l
 
 
 
-# export_qna_from_conversation(ds['train'][5], 33)
+def get_aok_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=64, img_dir=None):
+    
+    raw_datasets = load_dataset(dataset_name)
+    raw_dataset = list(raw_datasets.values())[0]
+
+    
+    split_dataset = raw_dataset.train_test_split(test_size=0.2, seed=42)
+    train_raw_dataset = split_dataset['train']
+    eval_raw_dataset = split_dataset['test']
+
+    train_dataset = AOKVQADataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=id_to_image)
+    valid_dataset = AOKVQADataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=id_to_image)
+    train_debug = Subset(train_dataset, indices=range(50))
+    valid_debug = Subset(valid_dataset, indices=range(50))
+
+    return train_dataset, valid_dataset, train_debug, valid_debug
+
+
+def get_visual7w_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=64, img_dir=None):
+    
+    id_to_image = None
+    
+    raw_datasets = load_dataset(dataset_name)
+    # Use only first dict
+    raw_dataset = list(raw_datasets.values())[0]
+
+    flattened_data = []
+    for example in raw_dataset:
+        flattened_data.extend(flatten_qa(example))  
+
+    flat_dataset = HFDataset.from_list(flattened_data)
+
+    
+    split_dataset = flat_dataset.train_test_split(test_size=0.2, seed=42)
+    train_raw_dataset = split_dataset['train']
+    eval_raw_dataset = split_dataset['test']
+
+    train_dataset = Visual7wDataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=id_to_image)
+    valid_dataset = Visual7wDataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=id_to_image)
+    train_debug = Subset(train_dataset, indices=range(50))
+    valid_debug = Subset(valid_dataset, indices=range(50))
+
+    return train_dataset, valid_dataset, train_debug, valid_debug
+
+
+
+
 def export_qna_from_conversation(item, seed=42):
     conv = item['conversations']
     if not conv:
@@ -372,8 +570,6 @@ def export_qna_from_conversation(item, seed=42):
             q, a = conv[i], conv[i + 1]
             if q.get("from") == "human" and a.get("from") == "gpt":
                 question = re.sub(r"<image>\s*", "", q["value"]).strip()
-                # question = question.replace("GPT-T-COCO", "")
-                # question = q["value"].replace("<image>\n", "").replace("<image>", "").strip()
                 answer   = a["value"].strip()
                 if len(answer) < 12:
                     continue
@@ -393,6 +589,35 @@ def export_qna_from_conversation(item, seed=42):
     qna = local_random.choice(qna_list)
     
     return qna[0], qna[1]
+
+
+
+
+def flatten_qa(example):
+    script_prefix = ["You are a helpful AI that answers multiple-choice questions based on the given image.\n"
+                "Select only the single best answer from A, B, C, or D.\n\n"
+                "Respond only with one letter (e.g., 'A').\n\n"]
+    script_suffix = ["Answer:"]
+    dialog = example["data"]
+    image = example['images']
+    flat_rows = []
+
+    for i in range(1, len(dialog), 2):
+        question_script, answer_script = dialog[i]['data'], dialog[i+1]['data']
+        question = '\n'.join(script_prefix+question_script.split('\n')[:-1]+script_suffix)
+        choices = [line.strip()[:-1] for line in question_script.split('\n') if line[:2] in ['A.', 'B.', 'C.', 'D.']]
+        answer = answer_script[-1] # Get Answer Letter from the script
+        index = ord(answer) - ord('A')
+        answer = choices[index]
+
+        flat_rows.append({
+            "image": image,
+            "question": question,
+            "answer": answer
+        })
+    
+    return flat_rows
+
 
 
 def contains_chinese(text):
