@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader, Subset
 from datasets import Dataset as HFDataset
 from collections import Counter
 from tqdm import tqdm
-import random, os, re
+import random, os, re, io
 import pandas as pd
 
 class ImageCaptioningDataset(Dataset):
@@ -382,7 +382,9 @@ class Visual7wDataset(Dataset):
         self.max_length = max_length
         self.num_query_tokens = num_query_tokens
         self.is_train = is_train
-        
+        self.image_dir = image_dataset
+        self.image_name_prefix = "v7w_"
+        self.image_name_suffix = '.jpg'
 
         if self.is_train:
             self.transforms = transforms.Compose([
@@ -407,12 +409,29 @@ class Visual7wDataset(Dataset):
 
     def __getitem__(self, idx):
         try:
-            
-            item = self.dataset[idx]
-            image = item['image']
-            prompt = item['question']
-            answer = item['answer']
 
+            item = self.dataset[idx]
+            image_name = self.image_name_prefix+item['image_id']+self.image_name_suffix
+            image_path = os.path.join(self.image_dir, image_name)
+            image = Image.open(image_path).convert("RGB")
+
+            question = item['question']
+            answer_idx = item['answer_idx']
+            letter = chr(65 + answer_idx)  
+            answer = f"{letter}. {choices[answer_idx]}"
+            
+
+            choices = [item[c] for c in ['a', 'b', 'c', 'd']]
+
+            prompt = (
+                "You are a helpful AI that answers multiple-choice questions based on the given image.\n" +
+                f"Select only the single best answer from A, B, C, or D.\n\n"
+                f"Respond only with one letter (e.g., 'A').\n\n"
+                f"Question: {question}\n\n" +
+                "\n".join([f"{chr(65+i)}. {choice}" for i, choice in enumerate(choices)]) +
+                "\n\nAnswer:"
+                )
+            
             pixel_values = self.transforms(image)
             len_of_prompt = len(self.tokenizer(prompt)['input_ids'])
 
@@ -524,35 +543,35 @@ def get_aok_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_len
     train_raw_dataset = split_dataset['train']
     eval_raw_dataset = split_dataset['test']
 
-    train_dataset = AOKVQADataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=id_to_image)
-    valid_dataset = AOKVQADataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=id_to_image)
+    train_dataset = AOKVQADataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length)
+    valid_dataset = AOKVQADataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length)
     train_debug = Subset(train_dataset, indices=range(50))
     valid_debug = Subset(valid_dataset, indices=range(50))
 
     return train_dataset, valid_dataset, train_debug, valid_debug
 
 
-def get_visual7w_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=64, img_dir=None):
+def get_visual7w_datasets(dataset_name, image_processor, tokenizer, tokenizer_max_length=64, df_dir=None, img_dir=None):
     
-    id_to_image = None
+    df = pd.read_json(df_dir)
+
+    all_qa_pairs = []
+
+    for _, row in df.iterrows():
+        qa_pairs = row['images']['qa_pairs']
+        all_qa_pairs.extend(qa_pairs)
+
+    df_processed = process_visual7w_data(all_qa_pairs)
+
+    ds = HFDataset.from_pandas(df_processed)
+
     
-    raw_datasets = load_dataset(dataset_name)
-    # Use only first dict
-    raw_dataset = list(raw_datasets.values())[0]
-
-    flattened_data = []
-    for example in raw_dataset:
-        flattened_data.extend(flatten_qa(example))  
-
-    flat_dataset = HFDataset.from_list(flattened_data)
-
-    
-    split_dataset = flat_dataset.train_test_split(test_size=0.2, seed=42)
+    split_dataset = ds.train_test_split(test_size=0.2, seed=42)
     train_raw_dataset = split_dataset['train']
     eval_raw_dataset = split_dataset['test']
 
-    train_dataset = Visual7wDataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=id_to_image)
-    valid_dataset = Visual7wDataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=id_to_image)
+    train_dataset = Visual7wDataset(train_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=img_dir)
+    valid_dataset = Visual7wDataset(eval_raw_dataset, image_processor, tokenizer, max_length=tokenizer_max_length, image_dataset=img_dir)
     train_debug = Subset(train_dataset, indices=range(50))
     valid_debug = Subset(valid_dataset, indices=range(50))
 
@@ -590,7 +609,33 @@ def export_qna_from_conversation(item, seed=42):
     
     return qna[0], qna[1]
 
+def process_visual7w_data(data):
+    rows = []
+    for item in data:
+        image_id = item["image_id"]
+        question = item["question"]
 
+
+        choices = [c.rstrip('.') for c in item["multiple_choices"]]
+        correct_answer = item["answer"].rstrip('.')
+        
+        all_choices = choices.copy()
+        all_choices.append(correct_answer)
+        random.shuffle(all_choices)
+        
+        answer_idx = all_choices.index(correct_answer)
+        
+        rows.append({
+            "image_id": image_id,
+            "question": question,
+            "a": all_choices[0],
+            "b": all_choices[1],
+            "c": all_choices[2],
+            "d": all_choices[3],
+            "answer_idx": answer_idx
+        })
+    
+    return pd.DataFrame(rows)
 
 
 def flatten_qa(example):

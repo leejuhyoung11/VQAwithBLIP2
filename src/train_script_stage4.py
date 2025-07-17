@@ -52,8 +52,8 @@ print(f"training {num_trainable_params} params...")
 print(f"Preparing dataset...")
 
 
-train_dataset1, valid_dataset1, train_debug1, valid_debug1 = get_aok_datasets(config['dataset']['instruct150'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
-train_dataset2, valid_dataset2, train_debug2, valid_debug2 = get_visual7w_datasets(config['dataset']['instruct150'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
+train_dataset1, valid_dataset1, train_debug1, valid_debug1 = get_aok_datasets(config['dataset']['aokvqa'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'])
+train_dataset2, valid_dataset2, train_debug2, valid_debug2 = get_visual7w_datasets(config['dataset']['visual7w'], image_processor, tokenizer, tokenizer_max_length=config['training']['tokenizer_max_length'], df_dir=config['path']['instruct_visual7w'], img_dir=config['path']['visual7w'])
 
 
 concat_train_dataset = ConcatDataset([train_dataset1, train_dataset2])

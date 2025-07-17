@@ -6,6 +6,8 @@ path:
   save_dir: "../outputs/checkpoints"
   instruct_df: "../datasets/llava_instruct_150k.json"
   coco2014: "../datasets/train2014"
+  instruct_visual7w: "../datasets/dataset_v7w_telling.json"
+  visual7w: "../datsets/visual7w/images"
   stage1_checkpoint: "../outputs/checkpoints/ImageCaptioning-stage1/epoch9/checkpoint_epoch9.pt"
   stage2_checkpoint: "../outputs/checkpoints/ImageCaptioning-stage2/epoch20/checkpoint_epoch920pt"
   resume_from_checkpoint: null # Or "/path/to/checkpoint.pt"
