@@ -411,17 +411,17 @@ class Visual7wDataset(Dataset):
         try:
 
             item = self.dataset[idx]
-            image_name = self.image_name_prefix+item['image_id']+self.image_name_suffix
+            image_name = self.image_name_prefix+str(item['image_id'])+self.image_name_suffix
             image_path = os.path.join(self.image_dir, image_name)
             image = Image.open(image_path).convert("RGB")
 
             question = item['question']
             answer_idx = item['answer_idx']
             letter = chr(65 + answer_idx)  
+            choices = [item[c] for c in ['a', 'b', 'c', 'd']]
+
             answer = f"{letter}. {choices[answer_idx]}"
             
-
-            choices = [item[c] for c in ['a', 'b', 'c', 'd']]
 
             prompt = (
                 "You are a helpful AI that answers multiple-choice questions based on the given image.\n" +
