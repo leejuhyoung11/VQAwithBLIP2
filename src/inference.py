@@ -71,12 +71,12 @@ def main(config_path, checkpoint_path):
 
     submission = pd.read_csv('../datasets/sample_submission.csv')
     submission['answer'] = results
-    submission.to_csv('../outputs/predicitons/blip2_phi1.5_submit1.csv', index=False)
+    submission.to_csv('../outputs/predicitons/blip2_phi1.5_submission.csv', index=False)
     print("✅ Done.")
 
 
 if __name__ == '__main__':
 
     config_file = '../configs/config.yaml' 
-    checkpoint_path = "../outputs/checkpoints/cc3m/checkpoint_epoch1.pt"
+    checkpoint_path = "../outputs/checkpoints/ImageCaptioning-stage4/epoch_4/checkpoint_epoch4.pt"
     main(config_file, checkpoint_path)

@@ -4,17 +4,17 @@ path:
   eval_csv_path: "/path/to/eval.csv"
   image_dir: None
   save_dir: 
-    stage1: "../outputs/checkpoints/stage1"
-    stage2: "../outputs/checkpoints/stage2"
-    stage3: "../outputs/checkpoints/stage3"
-    stage4: "../outputs/checkpoints/stage4"
+    stage1: "../outputs/checkpoints"
+    stage2: "../outputs/checkpoints"
+    stage3: "../outputs/checkpoints"
+    stage4: "../outputs/checkpoints"
   instruct_df: "../datasets/llava_instruct_150k.json"
   coco2014: "../datasets/train2014"
   instruct_visual7w: "../datasets/dataset_v7w_telling.json"
   visual7w: "../datasets/images"
-  stage1_checkpoint: "../outputs/checkpoints/stage1/epoch12/checkpoint_epoch12.pt"
-  stage2_checkpoint: "../outputs/checkpoints/stage2/epoch3/checkpoint_epoch3.pt"
-  stage3_checkpoint: "../outputs/checkpoints/stage3/epoch3/checkpoint_epoch3.pt"
+  stage1_checkpoint: "../outputs/checkpoints/ImageCaptioning-stage1/epoch_12/checkpoint_epoch12.pt"
+  stage2_checkpoint: "../outputs/checkpoints/ImageCaptioning-stage2/epoch_3/checkpoint_epoch3.pt"
+  stage3_checkpoint: "../outputs/checkpoints/ImageCaptioning-stage3/epoch_3/checkpoint_epoch3.pt"
   resume_from_checkpoint: null # Or "/path/to/checkpoint.pt"
 
 # -- Datasets --
