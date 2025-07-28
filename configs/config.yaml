@@ -3,13 +3,18 @@ path:
   train_csv_path: "/path/to/train.csv"
   eval_csv_path: "/path/to/eval.csv"
   image_dir: None
-  save_dir: "../outputs/checkpoints"
+  save_dir: 
+    stage1: "../outputs/checkpoints/stage1"
+    stage2: "../outputs/checkpoints/stage2"
+    stage3: "../outputs/checkpoints/stage3"
+    stage4: "../outputs/checkpoints/stage4"
   instruct_df: "../datasets/llava_instruct_150k.json"
   coco2014: "../datasets/train2014"
   instruct_visual7w: "../datasets/dataset_v7w_telling.json"
-  visual7w: "../datsets/visual7w/images"
-  stage1_checkpoint: "../outputs/checkpoints/ImageCaptioning-stage1/epoch9/checkpoint_epoch9.pt"
-  stage2_checkpoint: "../outputs/checkpoints/ImageCaptioning-stage2/epoch20/checkpoint_epoch920pt"
+  visual7w: "../datasets/images"
+  stage1_checkpoint: "../outputs/checkpoints/stage1/epoch12/checkpoint_epoch12.pt"
+  stage2_checkpoint: "../outputs/checkpoints/stage2/epoch3/checkpoint_epoch3.pt"
+  stage3_checkpoint: "../outputs/checkpoints/stage3/epoch3/checkpoint_epoch3.pt"
   resume_from_checkpoint: null # Or "/path/to/checkpoint.pt"
 
 # -- Datasets --
@@ -42,12 +47,34 @@ model:
 
 # -- Training arguments --
 training:
-  num_epochs: 50
-  batch_size: 64
-  learning_rate: 1e-5
-  weight_decay: 0.01
-  warmup_ratio: 0.1
-  tokenizer_max_length: 180
+  stage1:
+    num_epochs: 50
+    batch_size: 32
+    learning_rate: 2e-5
+    weight_decay: 0.01
+    warmup_ratio: 0.1
+    tokenizer_max_length: 180
+  stage2:
+    num_epochs: 50
+    batch_size: 32
+    learning_rate: 1e-5
+    weight_decay: 0.01
+    warmup_ratio: 0.1
+    tokenizer_max_length: 512
+  stage3:
+    num_epochs: 12
+    batch_size: 32
+    learning_rate: 1e-5
+    weight_decay: 0.01
+    warmup_ratio: 0.1
+    tokenizer_max_length: 256
+  stage4:
+    num_epochs: 10
+    batch_size: 32
+    learning_rate: 1e-5
+    weight_decay: 0.01
+    warmup_ratio: 0.1
+    tokenizer_max_length: 256
 
 hf:
   repo_id: 'DRPARKSTREET/BLIP2_PHI1.5'

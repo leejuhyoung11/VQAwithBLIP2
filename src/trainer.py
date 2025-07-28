@@ -87,11 +87,6 @@ class CustomTrainer:
         warmup_steps = int(0.1 * total_steps)
         self.global_step = 0
         
-        # self.scheduler = get_cosine_schedule_with_warmup(
-        #     optimizer=self.optimizer,
-        #     num_warmup_steps=warmup_steps,
-        #     num_training_steps=total_steps,
-        # )
 
         self.scheduler = get_linear_schedule_with_warmup(
             optimizer=self.optimizer,
@@ -189,8 +184,8 @@ class CustomTrainer:
         
         print("\n--- Sample Predictions ---")
         for pred, label in zip(last_preds, last_labels):
-            print(f"🔵 Pred:  {pred.strip()}")
-            print(f"🟢 Label: {label.strip()}")
+            print(f"Pred:  {pred.strip()}")
+            print(f"Label: {label.strip()}")
         print("---------------------------------------\n")
 
         return avg_val_loss
