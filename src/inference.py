@@ -6,8 +6,8 @@ import sys, re, os
 import pandas as pd
 from tqdm import tqdm
 
-from model import BLIP2ForPhi
-from train import setup_model
+from model import BLIP2ForPhi, setup_model
+
 
 def extract_answer_letter(text):
     match = re.search(r"Answer:\s*([A-Da-d])\b", text)
@@ -16,6 +16,9 @@ def extract_answer_letter(text):
 def main(config_path, checkpoint_path):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+
+    output_path = '../outputs/predicitons'
+    os.makedirs(output_path, exist_ok=True)
 
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
@@ -67,12 +70,12 @@ def main(config_path, checkpoint_path):
         decoded = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
         results.append(decoded[0] if decoded else 'C')
 
-    print('Done.')
+
 
     submission = pd.read_csv('../datasets/sample_submission.csv')
     submission['answer'] = results
-    submission.to_csv('../outputs/predicitons/blip2_phi1.5_submission.csv', index=False)
-    print("✅ Done.")
+    submission.to_csv(os.path.join(output_path, 'blip2_phi1.5_submission.csv'), index=False)
+    print("Done.")
 
 
 if __name__ == '__main__':
