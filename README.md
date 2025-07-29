@@ -27,8 +27,8 @@ bash setup.sh
 
 | Stage | Script Name       | Description                                              |
 | ----- | ----------------- | -------------------------------------------------------- |
-| 1     | train_script_1.py | Initial Image Captioning training with Various format    |
-| 2     | train_script_2.py | Advanced Image Captioning training with Complex Captions |
+| 1     | train_script_1.py | Image Captioning training with Various format            |
+| 2     | train_script_2.py | Initial Open-Ended VQA Training                          |
 | 3     | train_script_3.py | Open-Ended VQA Training for Reasoning Enhancement        |
 | 4     | train_script_4.py | Closed-Ended Training for Multiple Choice Adaptation     |
 
